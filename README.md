@@ -6,11 +6,12 @@ A private, browser-based dental work organizer with:
 - Separate logged-in workspace: `dashboard.html`.
 - Firebase Google sign-in support.
 - Local strong-password access for personal use.
+- Local accounts remember saved data by email and verify the same password on future logins.
 - Side navigation for Home, Data, and Profile.
 - Add, edit, and delete doctor case records.
 - Doctor, patient, prosthetic type, received date, due date, cost, and notes fields.
 - Selective PDF export by doctor, record, and field.
-- Profile settings and theme choices.
+- Profile settings and saved theme choices, including Light, Aqua, Lavender, Midnight, and Dark.
 - MyDentHub logo branding in the app and exported PDFs.
 
 ## Open the App
@@ -40,4 +41,4 @@ const firebaseConfig = {
 
 ## Storage Note
 
-The current version stores records in the browser's `localStorage` under each signed-in user. For use by many people across different devices, connect the app to a database such as Firebase Firestore.
+The current version stores records in the browser's `localStorage` under each signed-in user. Local passwords are not stored as plain text; the app stores a password hash for matching future logins. For use by many people across different devices, connect the app to a database such as Firebase Firestore.

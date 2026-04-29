@@ -12,6 +12,7 @@ const elements = {
   passwordForm: $("#passwordForm"),
   emailInput: $("#emailInput"),
   passwordInput: $("#passwordInput"),
+  rememberEmailInput: $("#rememberEmailInput"),
   strengthBar: $("#strengthBar"),
   strengthText: $("#strengthText"),
   googleLoginButton: $("#googleLoginButton"),
@@ -61,8 +62,30 @@ function updateStrength() {
     : "Use 8+ characters with uppercase, lowercase, number, and symbol.";
 }
 
+async function hashPassword(email, password) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const value = `mydenthub:${normalizedEmail}:${password}`;
+
+  if (window.crypto?.subtle) {
+    const bytes = new TextEncoder().encode(value);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(hashBuffer), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index) | 0;
+  }
+  return `fallback-${hash}`;
+}
+
+function accountKey(email) {
+  return `${storagePrefix}:account:${email.trim().toLowerCase()}`;
+}
+
 function enterDashboard(user) {
   localStorage.setItem(`${storagePrefix}:session`, JSON.stringify(user));
+  localStorage.setItem(`${storagePrefix}:lastEmail`, user.email);
   window.location.href = "dashboard.html";
 }
 
@@ -71,23 +94,50 @@ elements.googleLoginButton.addEventListener("click", () => signInWithGoogle().ca
   elements.firebaseNotice.textContent = error.message;
 }));
 
-elements.passwordForm.addEventListener("submit", (event) => {
+elements.passwordForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const email = elements.emailInput.value.trim();
   const password = elements.passwordInput.value;
+  const normalizedEmail = email.toLowerCase();
+  const storedAccount = JSON.parse(localStorage.getItem(accountKey(email)) || "null");
+  const passwordHash = await hashPassword(email, password);
 
-  if (scorePassword(password) < 5) {
+  if (!storedAccount && scorePassword(password) < 5) {
     elements.strengthText.textContent = "Please choose a stronger password before continuing.";
     return;
   }
 
-  enterDashboard({ id: `local:${email.toLowerCase()}`, name: email.split("@")[0], email, authType: "local" });
+  if (storedAccount && storedAccount.passwordHash !== passwordHash) {
+    elements.strengthText.textContent = "That password does not match this MyDentHub account.";
+    return;
+  }
+
+  if (!storedAccount) {
+    localStorage.setItem(accountKey(email), JSON.stringify({
+      email: normalizedEmail,
+      passwordHash,
+      createdAt: new Date().toISOString(),
+    }));
+  }
+
+  if (elements.rememberEmailInput.checked) {
+    localStorage.setItem(`${storagePrefix}:lastEmail`, normalizedEmail);
+  } else {
+    localStorage.removeItem(`${storagePrefix}:lastEmail`);
+  }
+
+  enterDashboard({ id: `local:${normalizedEmail}`, name: normalizedEmail.split("@")[0], email: normalizedEmail, authType: "local" });
 });
 
 if (localStorage.getItem(`${storagePrefix}:session`)) {
   window.location.href = "dashboard.html";
 } else if (!hasFirebaseConfig()) {
   elements.firebaseNotice.textContent = "Google sign-in is ready for Firebase setup. Local secure login works now.";
+}
+
+const rememberedEmail = localStorage.getItem(`${storagePrefix}:lastEmail`);
+if (rememberedEmail) {
+  elements.emailInput.value = rememberedEmail;
 }
 
 updateStrength();

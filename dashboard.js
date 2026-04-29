@@ -242,6 +242,9 @@ async function downloadPdf() {
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
   pdf.text(`Prepared for ${state.profile.displayName || state.user.email}`, margin + 106, y + 22);
+  if (state.profile.organization) {
+    pdf.text(`Organization: ${state.profile.organization}`, margin + 106, y + 38);
+  }
   y = 148;
 
   selected.forEach((record, index) => {

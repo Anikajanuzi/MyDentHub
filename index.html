@@ -18,7 +18,7 @@
       <section class="login-card" aria-labelledby="loginTitle">
         <p class="eyebrow">Secure access</p>
         <h1 id="loginTitle">Welcome to MyDentHub</h1>
-        <p class="muted">Sign in to manage your dental work organizer.</p>
+        <p class="muted">Sign in or create a local account to manage your dental work organizer.</p>
 
         <button id="googleLoginButton" class="google-button" type="button">
           <span aria-hidden="true">G</span>
@@ -37,11 +37,15 @@
             Password
             <input id="passwordInput" type="password" autocomplete="current-password" required />
           </label>
+          <label class="remember-row">
+            <input id="rememberEmailInput" type="checkbox" checked />
+            Remember my email on this device
+          </label>
           <div class="strength-wrap">
             <div class="strength-track"><span id="strengthBar"></span></div>
             <p id="strengthText">Use 8+ characters with uppercase, lowercase, number, and symbol.</p>
           </div>
-          <button class="primary-button" type="submit">Log in</button>
+          <button class="primary-button" type="submit">Log in or create account</button>
         </form>
       </section>
     </main>
