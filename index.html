@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyDentHub | Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="login-page">
+      <section class="login-brand" aria-label="MyDentHub brand">
+        <img class="login-logo" src="mydenthub-logo.png" alt="MyDentHub logo" />
+      </section>
+
+      <section class="login-card" aria-labelledby="loginTitle">
+        <p class="eyebrow">Secure access</p>
+        <h1 id="loginTitle">Welcome to MyDentHub</h1>
+        <p class="muted">Sign in to manage your dental work organizer.</p>
+
+        <button id="googleLoginButton" class="google-button" type="button">
+          <span aria-hidden="true">G</span>
+          Continue with Google
+        </button>
+        <p id="firebaseNotice" class="notice"></p>
+
+        <div class="divider"><span>or</span></div>
+
+        <form id="passwordForm" class="auth-form">
+          <label>
+            Email
+            <input id="emailInput" type="email" autocomplete="email" required />
+          </label>
+          <label>
+            Password
+            <input id="passwordInput" type="password" autocomplete="current-password" required />
+          </label>
+          <div class="strength-wrap">
+            <div class="strength-track"><span id="strengthBar"></span></div>
+            <p id="strengthText">Use 8+ characters with uppercase, lowercase, number, and symbol.</p>
+          </div>
+          <button class="primary-button" type="submit">Log in</button>
+        </form>
+      </section>
+    </main>
+
+    <script defer src="login.js"></script>
+  </body>
+</html>
