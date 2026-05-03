@@ -26,38 +26,52 @@
         <h1 id="loginTitle" data-i18n="welcome">Welcome to MyDentHub</h1>
         <p class="muted" data-i18n="loginIntro">Sign in or create an account to manage your dental work organizer.</p>
 
-        <div class="auth-tabs" role="tablist" aria-label="Account action">
-          <button class="auth-tab active" data-auth-mode="login" type="button" data-i18n="login">Log in</button>
-          <button class="auth-tab" data-auth-mode="create" type="button" data-i18n="createAccount">Create account</button>
-        </div>
+        <section class="auth-panel" aria-labelledby="loginPanelTitle">
+          <h2 id="loginPanelTitle" data-i18n="login">Log in</h2>
+          <form id="loginForm" class="auth-form">
+            <label>
+              <span data-i18n="email">Email</span>
+              <input id="loginEmailInput" type="email" autocomplete="email" required />
+            </label>
+            <label>
+              <span data-i18n="password">Password</span>
+              <input id="loginPasswordInput" type="password" autocomplete="current-password" required />
+            </label>
+            <label class="remember-row">
+              <input id="rememberEmailInput" type="checkbox" checked />
+              <span data-i18n="rememberEmail">Remember my email on this device</span>
+            </label>
+            <button id="loginSubmitButton" class="primary-button" type="submit" data-i18n="login">Log in</button>
+          </form>
 
-        <button id="googleLoginButton" class="google-button" type="button">
-          <span class="google-icon" aria-hidden="true">G</span>
-          <span data-i18n="continueGoogle">Continue with Google</span>
-        </button>
-        <p id="firebaseNotice" class="notice"></p>
+          <button id="googleLoginButton" class="google-button" type="button">
+            <span class="google-icon" aria-hidden="true">G</span>
+            <span data-i18n="continueGoogle">Continue with Google</span>
+          </button>
+        </section>
 
         <div class="divider"><span data-i18n="or">or</span></div>
 
-        <form id="passwordForm" class="auth-form">
-          <label>
-            <span data-i18n="email">Email</span>
-            <input id="emailInput" type="email" autocomplete="email" required />
-          </label>
-          <label>
-            <span data-i18n="password">Password</span>
-            <input id="passwordInput" type="password" autocomplete="current-password" required />
-          </label>
-          <label class="remember-row">
-            <input id="rememberEmailInput" type="checkbox" checked />
-            <span data-i18n="rememberEmail">Remember my email on this device</span>
-          </label>
-          <div class="strength-wrap">
-            <div class="strength-track"><span id="strengthBar"></span></div>
-            <p id="strengthText">Use 8+ characters with uppercase, lowercase, number, and symbol.</p>
-          </div>
-          <button id="authSubmitButton" class="primary-button" type="submit" data-i18n="login">Log in</button>
-        </form>
+        <section class="auth-panel" aria-labelledby="createPanelTitle">
+          <h2 id="createPanelTitle" data-i18n="createAccount">Create account</h2>
+          <form id="createForm" class="auth-form">
+            <label>
+              <span data-i18n="email">Email</span>
+              <input id="createEmailInput" type="email" autocomplete="email" required />
+            </label>
+            <label>
+              <span data-i18n="password">Password</span>
+              <input id="createPasswordInput" type="password" autocomplete="new-password" required />
+            </label>
+            <div id="createStrengthWrap" class="strength-wrap">
+              <div class="strength-track"><span id="createStrengthBar"></span></div>
+              <p id="createStrengthText" data-i18n="passwordHint">Use 8+ characters with uppercase, lowercase, number, and symbol.</p>
+            </div>
+            <button id="createSubmitButton" class="primary-button" type="submit" data-i18n="createAccount">Create account</button>
+          </form>
+        </section>
+
+        <p id="firebaseNotice" class="notice"></p>
       </section>
     </main>
 
