@@ -1,23 +1,23 @@
-const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: "",
-};
-
+const firebaseConfig = window.mydenthubFirebaseConfig || {};
 const storagePrefix = "mydenthub";
 const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+const i18n = window.MyDentHubI18n;
+const t = (key) => i18n.t(key);
 
 const elements = {
   passwordForm: $("#passwordForm"),
   emailInput: $("#emailInput"),
   passwordInput: $("#passwordInput"),
   rememberEmailInput: $("#rememberEmailInput"),
+  authSubmitButton: $("#authSubmitButton"),
   strengthBar: $("#strengthBar"),
   strengthText: $("#strengthText"),
   googleLoginButton: $("#googleLoginButton"),
   firebaseNotice: $("#firebaseNotice"),
 };
+
+let authMode = "login";
 
 function hasFirebaseConfig() {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
@@ -25,22 +25,30 @@ function hasFirebaseConfig() {
 
 async function signInWithGoogle() {
   if (!hasFirebaseConfig()) {
-    elements.firebaseNotice.textContent = "Add your Firebase web config in login.js to enable real Google sign-in.";
+    elements.firebaseNotice.textContent = t("firebaseGoogleSetup");
     return;
   }
 
-  const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
-  const { getAuth, GoogleAuthProvider, signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
-  const result = await signInWithPopup(auth, provider);
+  const firebase = await getFirebaseAuth();
+  const provider = new firebase.GoogleAuthProvider();
+  const result = await firebase.signInWithPopup(firebase.auth, provider);
   enterDashboard({
     id: result.user.uid,
     name: result.user.displayName || "Google User",
     email: result.user.email,
     authType: "google",
   });
+}
+
+async function getFirebaseAuth() {
+  if (!hasFirebaseConfig()) return null;
+  const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
+  const authModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  return {
+    auth: authModule.getAuth(app),
+    ...authModule,
+  };
 }
 
 function scorePassword(password) {
@@ -58,8 +66,8 @@ function updateStrength() {
   elements.strengthBar.style.width = `${Math.min(score * 20, 100)}%`;
   elements.strengthBar.style.background = score >= 5 ? "#49b9ae" : score >= 3 ? "#8b84d7" : "#c7463b";
   elements.strengthText.textContent = score >= 5
-    ? "Strong password. You are ready to log in."
-    : "Use 8+ characters with uppercase, lowercase, number, and symbol.";
+    ? t("passwordStrong")
+    : t("passwordWeak");
 }
 
 async function hashPassword(email, password) {
@@ -89,7 +97,23 @@ function enterDashboard(user) {
   window.location.href = "dashboard.html";
 }
 
+function setAuthMode(mode) {
+  authMode = mode;
+  $$(".auth-tab").forEach((button) => button.classList.toggle("active", button.dataset.authMode === mode));
+  elements.authSubmitButton.textContent = mode === "create" ? t("createAccount") : t("login");
+  elements.passwordInput.autocomplete = mode === "create" ? "new-password" : "current-password";
+  elements.firebaseNotice.textContent = hasFirebaseConfig()
+    ? mode === "create"
+      ? t("createVerify")
+      : t("loginVerified")
+    : t("firebaseLocal");
+  updateStrength();
+}
+
 elements.passwordInput.addEventListener("input", updateStrength);
+$$(".auth-tab").forEach((button) => {
+  button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
+});
 elements.googleLoginButton.addEventListener("click", () => signInWithGoogle().catch((error) => {
   elements.firebaseNotice.textContent = error.message;
 }));
@@ -99,40 +123,81 @@ elements.passwordForm.addEventListener("submit", async (event) => {
   const email = elements.emailInput.value.trim();
   const password = elements.passwordInput.value;
   const normalizedEmail = email.toLowerCase();
-  const storedAccount = JSON.parse(localStorage.getItem(accountKey(email)) || "null");
-  const passwordHash = await hashPassword(email, password);
 
-  if (!storedAccount && scorePassword(password) < 5) {
-    elements.strengthText.textContent = "Please choose a stronger password before continuing.";
-    return;
+  try {
+    if (scorePassword(password) < 5) {
+      elements.strengthText.textContent = t("passwordWeak");
+      return;
+    }
+
+    const firebase = await getFirebaseAuth();
+    if (firebase) {
+      if (authMode === "create") {
+        const credential = await firebase.createUserWithEmailAndPassword(firebase.auth, normalizedEmail, password);
+        await firebase.sendEmailVerification(credential.user);
+        elements.firebaseNotice.textContent = t("accountCreated");
+        return;
+      }
+
+      const credential = await firebase.signInWithEmailAndPassword(firebase.auth, normalizedEmail, password);
+      if (!credential.user.emailVerified) {
+        await firebase.sendEmailVerification(credential.user);
+        elements.firebaseNotice.textContent = t("verifyFirst");
+        await firebase.signOut(firebase.auth);
+        return;
+      }
+
+      enterDashboard({
+        id: credential.user.uid,
+        name: credential.user.displayName || normalizedEmail.split("@")[0],
+        email: normalizedEmail,
+        authType: "firebase",
+      });
+      return;
+    }
+
+    const storedAccount = JSON.parse(localStorage.getItem(accountKey(email)) || "null");
+    const passwordHash = await hashPassword(email, password);
+
+    if (authMode === "create" && storedAccount) {
+      elements.strengthText.textContent = t("accountExists");
+      return;
+    }
+
+    if (authMode === "login" && !storedAccount) {
+      elements.strengthText.textContent = t("noLocalAccount");
+      return;
+    }
+
+    if (storedAccount && storedAccount.passwordHash !== passwordHash) {
+      elements.strengthText.textContent = t("passwordMismatch");
+      return;
+    }
+
+    if (authMode === "create") {
+      localStorage.setItem(accountKey(email), JSON.stringify({
+        email: normalizedEmail,
+        passwordHash,
+        createdAt: new Date().toISOString(),
+      }));
+    }
+
+    if (elements.rememberEmailInput.checked) {
+      localStorage.setItem(`${storagePrefix}:lastEmail`, normalizedEmail);
+    } else {
+      localStorage.removeItem(`${storagePrefix}:lastEmail`);
+    }
+
+    enterDashboard({ id: `local:${normalizedEmail}`, name: normalizedEmail.split("@")[0], email: normalizedEmail, authType: "local" });
+  } catch (error) {
+    elements.firebaseNotice.textContent = error.message || t("genericError");
   }
-
-  if (storedAccount && storedAccount.passwordHash !== passwordHash) {
-    elements.strengthText.textContent = "That password does not match this MyDentHub account.";
-    return;
-  }
-
-  if (!storedAccount) {
-    localStorage.setItem(accountKey(email), JSON.stringify({
-      email: normalizedEmail,
-      passwordHash,
-      createdAt: new Date().toISOString(),
-    }));
-  }
-
-  if (elements.rememberEmailInput.checked) {
-    localStorage.setItem(`${storagePrefix}:lastEmail`, normalizedEmail);
-  } else {
-    localStorage.removeItem(`${storagePrefix}:lastEmail`);
-  }
-
-  enterDashboard({ id: `local:${normalizedEmail}`, name: normalizedEmail.split("@")[0], email: normalizedEmail, authType: "local" });
 });
 
 if (localStorage.getItem(`${storagePrefix}:session`)) {
   window.location.href = "dashboard.html";
 } else if (!hasFirebaseConfig()) {
-  elements.firebaseNotice.textContent = "Google sign-in is ready for Firebase setup. Local secure login works now.";
+  elements.firebaseNotice.textContent = t("firebaseLocal");
 }
 
 const rememberedEmail = localStorage.getItem(`${storagePrefix}:lastEmail`);
@@ -140,4 +205,7 @@ if (rememberedEmail) {
   elements.emailInput.value = rememberedEmail;
 }
 
+i18n.bindLanguageControls();
+window.addEventListener("mydenthub:languagechange", () => setAuthMode(authMode));
 updateStrength();
+setAuthMode("login");

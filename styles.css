@@ -38,13 +38,13 @@
 }
 
 [data-theme="aqua"] {
-  --bg: #eaf8f7;
-  --surface: #ffffff;
-  --surface-strong: #d8f3f0;
+  --bg: #d8f7f4;
+  --surface: #f6fffe;
+  --surface-strong: #bff0eb;
   --sidebar-bg: #102f45;
-  --panel-bg: #ffffff;
-  --input-bg: #fbffff;
-  --table-head: #d8f3f0;
+  --panel-bg: #f1fffd;
+  --input-bg: #ffffff;
+  --table-head: #bff0eb;
   --text: #10202e;
   --muted: #5b7080;
   --primary: #102f45;
@@ -57,13 +57,13 @@
 }
 
 [data-theme="lavender"] {
-  --bg: #f3efff;
-  --surface: #ffffff;
-  --surface-strong: #e5e0ff;
+  --bg: #ede6ff;
+  --surface: #fdfcff;
+  --surface-strong: #d9d0ff;
   --sidebar-bg: #26205d;
-  --panel-bg: #ffffff;
-  --input-bg: #fdfcff;
-  --table-head: #e5e0ff;
+  --panel-bg: #fbf9ff;
+  --input-bg: #ffffff;
+  --table-head: #d9d0ff;
   --text: #201c35;
   --muted: #655f80;
   --primary: #242f6f;
@@ -76,13 +76,13 @@
 }
 
 [data-theme="midnight"] {
-  --bg: #e9eef4;
-  --surface: #ffffff;
-  --surface-strong: #dfe7ee;
+  --bg: #dce7f3;
+  --surface: #f8fbff;
+  --surface-strong: #cad8e7;
   --sidebar-bg: #091327;
-  --panel-bg: #ffffff;
-  --input-bg: #fbfcfe;
-  --table-head: #dfe7ee;
+  --panel-bg: #f4f8fd;
+  --input-bg: #ffffff;
+  --table-head: #cad8e7;
   --text: #111827;
   --muted: #556273;
   --primary: #10203f;
@@ -221,7 +221,7 @@ button {
   color: var(--text);
 }
 
-.google-button span {
+.google-button .google-icon {
   display: grid;
   width: 24px;
   height: 24px;
@@ -268,7 +268,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 13px;
-  background: #fff;
+  background: var(--input-bg);
   color: var(--text);
   outline: none;
 }
@@ -288,6 +288,56 @@ textarea:focus {
 .profile-form {
   display: grid;
   gap: 16px;
+}
+
+.language-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.language-button {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.language-button.active {
+  border-color: var(--accent);
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.auth-tab {
+  min-height: 38px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.auth-tab.active {
+  background: var(--primary);
+  color: #ffffff;
 }
 
 .remember-row {
@@ -382,6 +432,16 @@ textarea:focus {
   gap: 8px;
 }
 
+.sidebar-language {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin: 0;
+}
+
+.sidebar-language .language-button {
+  width: 100%;
+}
+
 .nav-item {
   width: 100%;
   padding: 0 14px;
@@ -420,6 +480,30 @@ textarea:focus {
 [data-theme="dark"] .sidebar .ghost-button {
   border-color: color-mix(in srgb, var(--accent) 42%, transparent);
   color: #ffffff;
+}
+
+[data-theme="aqua"] .sidebar-language,
+[data-theme="lavender"] .sidebar-language,
+[data-theme="midnight"] .sidebar-language,
+[data-theme="dark"] .sidebar-language {
+  color: color-mix(in srgb, var(--muted) 42%, #ffffff);
+}
+
+[data-theme="aqua"] .sidebar-language .language-button,
+[data-theme="lavender"] .sidebar-language .language-button,
+[data-theme="midnight"] .sidebar-language .language-button,
+[data-theme="dark"] .sidebar-language .language-button {
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  background: transparent;
+  color: #ffffff;
+}
+
+[data-theme="aqua"] .sidebar-language .language-button.active,
+[data-theme="lavender"] .sidebar-language .language-button.active,
+[data-theme="midnight"] .sidebar-language .language-button.active,
+[data-theme="dark"] .sidebar-language .language-button.active {
+  background: var(--accent);
+  color: var(--primary-dark);
 }
 
 .workspace {
@@ -468,6 +552,10 @@ textarea:focus {
   color: var(--muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-chip strong {
+  color: var(--text);
 }
 
 .page {
@@ -529,6 +617,12 @@ textarea:focus {
   display: flex;
   align-items: end;
   gap: 10px;
+}
+
+.inline-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
 }
 
 .table-wrap {

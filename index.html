@@ -16,40 +16,53 @@
       </section>
 
       <section class="login-card" aria-labelledby="loginTitle">
-        <p class="eyebrow">Secure access</p>
-        <h1 id="loginTitle">Welcome to MyDentHub</h1>
-        <p class="muted">Sign in or create a local account to manage your dental work organizer.</p>
+        <div class="language-toggle" aria-label="Language">
+          <span data-i18n="language">Language</span>
+          <button class="language-button active" data-language="en" type="button" data-i18n="english">English</button>
+          <button class="language-button" data-language="sq" type="button" data-i18n="albanian">Albanian</button>
+        </div>
+
+        <p class="eyebrow" data-i18n="secureAccess">Secure access</p>
+        <h1 id="loginTitle" data-i18n="welcome">Welcome to MyDentHub</h1>
+        <p class="muted" data-i18n="loginIntro">Sign in or create an account to manage your dental work organizer.</p>
+
+        <div class="auth-tabs" role="tablist" aria-label="Account action">
+          <button class="auth-tab active" data-auth-mode="login" type="button" data-i18n="login">Log in</button>
+          <button class="auth-tab" data-auth-mode="create" type="button" data-i18n="createAccount">Create account</button>
+        </div>
 
         <button id="googleLoginButton" class="google-button" type="button">
-          <span aria-hidden="true">G</span>
-          Continue with Google
+          <span class="google-icon" aria-hidden="true">G</span>
+          <span data-i18n="continueGoogle">Continue with Google</span>
         </button>
         <p id="firebaseNotice" class="notice"></p>
 
-        <div class="divider"><span>or</span></div>
+        <div class="divider"><span data-i18n="or">or</span></div>
 
         <form id="passwordForm" class="auth-form">
           <label>
-            Email
+            <span data-i18n="email">Email</span>
             <input id="emailInput" type="email" autocomplete="email" required />
           </label>
           <label>
-            Password
+            <span data-i18n="password">Password</span>
             <input id="passwordInput" type="password" autocomplete="current-password" required />
           </label>
           <label class="remember-row">
             <input id="rememberEmailInput" type="checkbox" checked />
-            Remember my email on this device
+            <span data-i18n="rememberEmail">Remember my email on this device</span>
           </label>
           <div class="strength-wrap">
             <div class="strength-track"><span id="strengthBar"></span></div>
             <p id="strengthText">Use 8+ characters with uppercase, lowercase, number, and symbol.</p>
           </div>
-          <button class="primary-button" type="submit">Log in or create account</button>
+          <button id="authSubmitButton" class="primary-button" type="submit" data-i18n="login">Log in</button>
         </form>
       </section>
     </main>
 
+    <script src="firebase-config.js"></script>
+    <script src="i18n.js"></script>
     <script defer src="login.js"></script>
   </body>
 </html>
