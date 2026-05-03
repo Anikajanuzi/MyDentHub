@@ -15,7 +15,6 @@ A private, browser-based dental work organizer with:
 - Selective PDF export by doctor, record, and field.
 - Profile settings and saved theme choices, including Light, Aqua, Lavender, Midnight, and Dark.
 - MyDentHub logo branding in the app and exported PDFs.
-- English by default, with a saved Albanian language option for Kosovo users.
 
 ## Open the App
 

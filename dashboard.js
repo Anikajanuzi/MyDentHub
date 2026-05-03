@@ -1,31 +1,21 @@
 const storagePrefix = "mydenthub";
 const logoPath = "mydenthub-logo.png";
 const firebaseConfig = window.mydenthubFirebaseConfig || {};
-const i18n = window.MyDentHubI18n;
-const t = (key) => i18n.t(key);
+
 const fields = [
-  { key: "doctor", labelKey: "doctor" },
-  { key: "patient", labelKey: "patient" },
-  { key: "prosthetic", labelKey: "prosthetic" },
-  { key: "received", labelKey: "received" },
-  { key: "due", labelKey: "due" },
-  { key: "cost", labelKey: "cost" },
-  { key: "notes", labelKey: "notes" },
+  { key: "doctor", label: "Doctor" },
+  { key: "patient", label: "Patient" },
+  { key: "prosthetic", label: "Prosthetic" },
+  { key: "received", label: "Received" },
+  { key: "due", label: "Due" },
+  { key: "cost", label: "Cost" },
+  { key: "notes", label: "Notes" },
 ];
 
-const prostheticTranslationKeys = {
-  "Crown": "crown",
-  "Bridge": "bridge",
-  "Denture": "denture",
-  "Partial denture": "partialDenture",
-  "Implant crown": "implantCrown",
-  "Implant bridge": "implantBridge",
-  "Veneer": "veneer",
-  "Night guard": "nightGuard",
-  "Retainer": "retainer",
-  "Temporary prosthetic": "temporaryProsthetic",
-  "Repair": "repair",
-  "Other": "other",
+const pageTitles = {
+  home: "Home",
+  data: "Data",
+  profile: "Profile",
 };
 
 let state = {
@@ -107,6 +97,7 @@ async function loadUserData() {
     state.profile = JSON.parse(localStorage.getItem(storageKey("profile")) || "{}");
     state.theme = localStorage.getItem(storageKey("theme")) || "aqua";
   }
+
   state.doctors = normalizeDoctors([...state.doctors, ...state.records.map((record) => record.doctor)]);
   state.selectedRecordIds = state.records.map((record) => record.id);
   state.selectedFields = fields.map((field) => field.key);
@@ -165,14 +156,14 @@ function renderRecords() {
     row.innerHTML = `
       <td>${escapeHtml(record.doctor)}</td>
       <td>${escapeHtml(record.patient)}</td>
-      <td>${escapeHtml(formatProsthetic(record.prosthetic))}</td>
+      <td>${escapeHtml(record.prosthetic)}</td>
       <td>${formatDate(record.received)}</td>
       <td>${formatDate(record.due)}</td>
       <td>${currency.format(Number(record.cost || 0))}</td>
       <td>
         <div class="row-actions">
-          <button class="row-action" data-edit="${record.id}" type="button">${t("edit")}</button>
-          <button class="row-action delete" data-delete="${record.id}" type="button">${t("delete")}</button>
+          <button class="row-action" data-edit="${record.id}" type="button">Edit</button>
+          <button class="row-action delete" data-delete="${record.id}" type="button">Delete</button>
         </div>
       </td>
     `;
@@ -186,7 +177,7 @@ function renderExportControls() {
   const doctors = ["__all__", ...new Set(state.records.map((record) => record.doctor).filter(Boolean))];
   const selectedDoctor = elements.doctorFilter.value || "__all__";
   elements.doctorFilter.innerHTML = doctors.map((doctor) => {
-    const label = doctor === "__all__" ? t("allDoctors") : doctor;
+    const label = doctor === "__all__" ? "All doctors" : doctor;
     return `<option value="${escapeHtml(doctor)}">${escapeHtml(label)}</option>`;
   }).join("");
   elements.doctorFilter.value = doctors.includes(selectedDoctor) ? selectedDoctor : "__all__";
@@ -194,7 +185,7 @@ function renderExportControls() {
   elements.fieldChooser.innerHTML = fields.map((field) => `
     <label>
       <input type="checkbox" value="${field.key}" ${state.selectedFields.includes(field.key) ? "checked" : ""} />
-      ${t(field.labelKey)}
+      ${field.label}
     </label>
   `).join("");
 
@@ -206,10 +197,18 @@ function renderExportControls() {
     ? filtered.map((record) => `
       <label>
         <input type="checkbox" value="${record.id}" ${state.selectedRecordIds.includes(record.id) ? "checked" : ""} />
-        ${escapeHtml(record.doctor)} - ${escapeHtml(record.patient)} - ${escapeHtml(formatProsthetic(record.prosthetic))}
+        ${escapeHtml(record.doctor)} - ${escapeHtml(record.patient)} - ${escapeHtml(record.prosthetic)}
       </label>
     `).join("")
-    : `<p class="muted">${t("noDoctorRecords")}</p>`;
+    : `<p class="muted">No records match this doctor filter.</p>`;
+}
+
+function renderDoctorOptions(selectedDoctor = elements.doctorInput.value) {
+  const options = state.doctors.length
+    ? state.doctors.map((doctor) => `<option value="${escapeHtml(doctor)}">${escapeHtml(doctor)}</option>`).join("")
+    : `<option value="">Add a doctor first</option>`;
+  elements.doctorInput.innerHTML = options;
+  if (state.doctors.includes(selectedDoctor)) elements.doctorInput.value = selectedDoctor;
 }
 
 function renderAll() {
@@ -220,14 +219,6 @@ function renderAll() {
   $$(".theme-choice").forEach((button) => button.classList.toggle("active", button.dataset.theme === state.theme));
 }
 
-function renderDoctorOptions(selectedDoctor = elements.doctorInput.value) {
-  const options = state.doctors.length
-    ? state.doctors.map((doctor) => `<option value="${escapeHtml(doctor)}">${escapeHtml(doctor)}</option>`).join("")
-    : `<option value="">${t("addDoctorFirst")}</option>`;
-  elements.doctorInput.innerHTML = options;
-  if (state.doctors.includes(selectedDoctor)) elements.doctorInput.value = selectedDoctor;
-}
-
 function filteredRecords() {
   const doctor = elements.doctorFilter.value;
   if (!doctor || doctor === "__all__") return state.records;
@@ -235,6 +226,12 @@ function filteredRecords() {
 }
 
 function showRecordForm(record = null) {
+  if (!state.doctors.length && !record) {
+    elements.newDoctorInput.focus();
+    alert("Add a doctor first, then create a patient record.");
+    return;
+  }
+
   elements.recordForm.hidden = false;
   elements.recordId.value = record?.id || "";
   if (record?.doctor && !state.doctors.includes(record.doctor)) state.doctors = normalizeDoctors([...state.doctors, record.doctor]);
@@ -256,10 +253,17 @@ function hideRecordForm() {
 
 async function saveRecord(event) {
   event.preventDefault();
+  const doctor = elements.doctorInput.value.trim();
+  if (!doctor) {
+    alert("Please add or select a doctor before saving this record.");
+    elements.newDoctorInput.focus();
+    return;
+  }
+
   const id = elements.recordId.value || crypto.randomUUID();
   const record = {
     id,
-    doctor: elements.doctorInput.value.trim(),
+    doctor,
     patient: elements.patientInput.value.trim(),
     prosthetic: elements.prostheticInput.value.trim(),
     received: elements.receivedInput.value,
@@ -267,8 +271,8 @@ async function saveRecord(event) {
     cost: elements.costInput.value,
     notes: elements.notesInput.value.trim(),
   };
-  state.doctors = normalizeDoctors([...state.doctors, record.doctor]);
 
+  state.doctors = normalizeDoctors([...state.doctors, record.doctor]);
   const existingIndex = state.records.findIndex((item) => item.id === id);
   if (existingIndex >= 0) {
     state.records[existingIndex] = record;
@@ -282,7 +286,7 @@ async function saveRecord(event) {
 }
 
 async function deleteRecord(id) {
-  if (!confirm(t("deleteConfirm"))) return;
+  if (!confirm("Delete this record?")) return;
   state.records = state.records.filter((record) => record.id !== id);
   state.selectedRecordIds = state.selectedRecordIds.filter((recordId) => recordId !== id);
   await saveRecords();
@@ -291,7 +295,11 @@ async function deleteRecord(id) {
 
 async function addDoctor() {
   const doctor = elements.newDoctorInput.value.trim();
-  if (!doctor) return;
+  if (!doctor) {
+    elements.newDoctorInput.focus();
+    return;
+  }
+
   state.doctors = normalizeDoctors([...state.doctors, doctor]);
   elements.newDoctorInput.value = "";
   renderDoctorOptions(doctor);
@@ -300,18 +308,18 @@ async function addDoctor() {
 
 async function downloadPdf() {
   if (!window.jspdf) {
-    alert(t("pdfLoading"));
+    alert("PDF tools are still loading. Try again in a moment.");
     return;
   }
 
   const selected = filteredRecords().filter((record) => state.selectedRecordIds.includes(record.id));
   if (!selected.length) {
-    alert(t("chooseOneRecord"));
+    alert("Choose at least one record to download.");
     return;
   }
 
   if (!state.selectedFields.length) {
-    alert(t("chooseOneField"));
+    alert("Choose at least one field for the PDF.");
     return;
   }
 
@@ -330,12 +338,12 @@ async function downloadPdf() {
   pdf.setTextColor(255, 255, 255);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(22);
-  pdf.text(t("pdfTitle"), margin + 148, y);
+  pdf.text("MyDentHub Case Export", margin + 148, y);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
-  pdf.text(`${t("preparedFor")} ${state.profile.displayName || state.user.email}`, margin + 148, y + 22);
+  pdf.text(`Prepared for ${state.profile.displayName || state.user.email}`, margin + 148, y + 22);
   if (state.profile.organization) {
-    pdf.text(`${t("organization")}: ${state.profile.organization}`, margin + 148, y + 38);
+    pdf.text(`Organization: ${state.profile.organization}`, margin + 148, y + 38);
   }
   y = 148;
 
@@ -359,7 +367,7 @@ async function downloadPdf() {
       const field = fields.find((item) => item.key === fieldKey);
       const rawValue = formatPdfValue(record, fieldKey);
       pdf.setTextColor(93, 104, 126);
-      pdf.text(`${t(field.labelKey)}:`, margin + 16, y);
+      pdf.text(`${field.label}:`, margin + 16, y);
       pdf.setTextColor(20, 32, 38);
       pdf.text(String(rawValue || "-"), margin + 112, y);
       y += 18;
@@ -397,22 +405,16 @@ function applyTheme() {
 
 function formatDate(value) {
   if (!value) return "-";
-  const locale = i18n.getLanguage() === "sq" ? "sq-AL" : undefined;
-  return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T12:00:00`));
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T12:00:00`));
 }
 
 function formatCurrency(value) {
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(value || 0));
 }
 
-function formatProsthetic(value) {
-  return prostheticTranslationKeys[value] ? t(prostheticTranslationKeys[value]) : value;
-}
-
 function formatPdfValue(record, fieldKey) {
   if (fieldKey === "cost") return formatCurrency(record[fieldKey]);
   if (fieldKey === "received" || fieldKey === "due") return formatDate(record[fieldKey]);
-  if (fieldKey === "prosthetic") return formatProsthetic(record[fieldKey]);
   return record[fieldKey];
 }
 
@@ -434,14 +436,19 @@ $$(".nav-item").forEach((button) => {
     button.classList.add("active");
     $$(".page").forEach((page) => page.classList.remove("active-page"));
     $(`#${button.dataset.page}Page`).classList.add("active-page");
-    elements.pageTitle.dataset.pageTitleKey = button.dataset.page;
-    elements.pageTitle.textContent = t(button.dataset.page);
+    elements.pageTitle.textContent = pageTitles[button.dataset.page] || button.textContent;
     if (button.dataset.page === "data") renderExportControls();
   });
 });
 
 elements.addRecordButton.addEventListener("click", () => showRecordForm());
 elements.addDoctorButton.addEventListener("click", addDoctor);
+elements.newDoctorInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addDoctor();
+  }
+});
 elements.cancelRecordButton.addEventListener("click", hideRecordForm);
 elements.recordForm.addEventListener("submit", saveRecord);
 
@@ -482,18 +489,15 @@ $$(".theme-choice").forEach((button) => {
 });
 
 const existingSession = localStorage.getItem(`${storagePrefix}:session`);
-i18n.applyTranslations();
-
 if (!existingSession) {
   window.location.href = "index.html";
 } else {
   state.user = JSON.parse(existingSession);
   loadUserData().then(() => {
     applyTheme();
-    elements.pageTitle.textContent = t(elements.pageTitle.dataset.pageTitleKey || "home");
     renderAll();
   }).catch((error) => {
-    alert(error.message || t("couldNotLoad"));
+    alert(error.message || "Could not load your saved data.");
     window.location.href = "index.html";
   });
 }

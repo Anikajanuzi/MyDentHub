@@ -631,6 +631,24 @@ textarea:focus {
   color: var(--primary);
 }
 
+.doctor-manager {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  box-shadow: var(--shadow);
+}
+
+.doctor-manager h2 {
+  margin: 0;
+  color: var(--primary);
+}
+
 .record-form {
   display: grid;
   grid-template-columns: repeat(3, minmax(180px, 1fr));
@@ -808,6 +826,7 @@ tr:last-child td {
   }
 
   .record-form,
+  .doctor-manager,
   .export-grid,
   .profile-layout {
     grid-template-columns: 1fr;

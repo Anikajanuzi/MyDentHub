@@ -16,17 +16,17 @@
           <img src="mydenthub-logo.png" alt="MyDentHub logo" />
         </a>
         <nav class="main-nav" aria-label="Main navigation">
-          <button class="nav-item active" data-page="home" type="button" data-i18n="home">Home</button>
-          <button class="nav-item" data-page="data" type="button" data-i18n="data">Data</button>
-          <button class="nav-item" data-page="profile" type="button" data-i18n="profile">Profile</button>
+          <button class="nav-item active" data-page="home" type="button">Home</button>
+          <button class="nav-item" data-page="data" type="button">Data</button>
+          <button class="nav-item" data-page="profile" type="button">Profile</button>
         </nav>
-        <button id="logoutButton" class="ghost-button" type="button" data-i18n="logout">Log out</button>
+        <button id="logoutButton" class="ghost-button" type="button">Log out</button>
       </aside>
 
       <section class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow" data-i18n="tagline">Organize. Manage. Smile.</p>
+            <p class="eyebrow">Organize. Manage. Smile.</p>
             <h1 id="pageTitle" data-page-title-key="home">Home</h1>
           </div>
           <div class="user-chip">
@@ -41,71 +41,70 @@
         <section id="homePage" class="page active-page">
           <div class="toolbar">
             <div>
-              <h2 data-i18n="doctorRecords">Doctor Records</h2>
-              <p class="muted" data-i18n="recordsIntro">Track doctor names, patient cases, prosthetics, received dates, due dates, and costs.</p>
+              <h2>Records</h2>
+              <p class="muted">Add a doctor once, then save patient records under that doctor.</p>
             </div>
-            <button id="addRecordButton" class="primary-button" type="button" data-i18n="addRecord">Add record</button>
+            <button id="addRecordButton" class="primary-button" type="button">Add record</button>
           </div>
 
-          <aside class="help-strip">
-            <strong data-i18n="howItWorks">How it works:</strong>
-            <span data-i18n="howItWorksText">Add a doctor, then save each patient case under that doctor. You can later filter by doctor and choose exactly which saved fields are exported to PDF.</span>
-          </aside>
+          <section class="doctor-manager">
+            <div>
+              <h2>Add doctor</h2>
+              <p class="muted">Saved doctors appear in the record form dropdown.</p>
+            </div>
+            <div class="inline-field">
+              <input id="newDoctorInput" type="text" placeholder="Doctor name" />
+              <button id="addDoctorButton" class="ghost-button" type="button">Add</button>
+            </div>
+          </section>
 
           <form id="recordForm" class="record-form" hidden>
             <input id="recordId" type="hidden" />
             <label>
-              <span data-i18n="doctorName">Doctor name</span>
+              <span>Doctor name</span>
               <select id="doctorInput" required></select>
             </label>
             <label>
-              <span data-i18n="addDoctor">Add doctor</span>
-              <div class="inline-field">
-                <input id="newDoctorInput" type="text" placeholder="Doctor name" data-i18n-placeholder="doctorName" />
-                <button id="addDoctorButton" class="ghost-button" type="button" data-i18n="add">Add</button>
-              </div>
+              <span>Patient name</span>
+              <input id="patientInput" type="text" placeholder="Patient name" required />
             </label>
             <label>
-              <span data-i18n="patientName">Patient name</span>
-              <input id="patientInput" type="text" placeholder="Patient name" required data-i18n-placeholder="patientName" />
-            </label>
-            <label>
-              <span data-i18n="prostheticType">Prosthetic type</span>
+              <span>Prosthetic type</span>
               <select id="prostheticInput" required>
-                <option value="" data-i18n="chooseWorkType">Choose work type</option>
-                <option value="Crown" data-i18n="crown">Crown</option>
-                <option value="Bridge" data-i18n="bridge">Bridge</option>
-                <option value="Denture" data-i18n="denture">Denture</option>
-                <option value="Partial denture" data-i18n="partialDenture">Partial denture</option>
-                <option value="Implant crown" data-i18n="implantCrown">Implant crown</option>
-                <option value="Implant bridge" data-i18n="implantBridge">Implant bridge</option>
-                <option value="Veneer" data-i18n="veneer">Veneer</option>
-                <option value="Night guard" data-i18n="nightGuard">Night guard</option>
-                <option value="Retainer" data-i18n="retainer">Retainer</option>
-                <option value="Temporary prosthetic" data-i18n="temporaryProsthetic">Temporary prosthetic</option>
-                <option value="Repair" data-i18n="repair">Repair</option>
-                <option value="Other" data-i18n="other">Other</option>
+                <option value="">Choose work type</option>
+                <option value="Crown">Crown</option>
+                <option value="Bridge">Bridge</option>
+                <option value="Denture">Denture</option>
+                <option value="Partial denture">Partial denture</option>
+                <option value="Implant crown">Implant crown</option>
+                <option value="Implant bridge">Implant bridge</option>
+                <option value="Veneer">Veneer</option>
+                <option value="Night guard">Night guard</option>
+                <option value="Retainer">Retainer</option>
+                <option value="Temporary prosthetic">Temporary prosthetic</option>
+                <option value="Repair">Repair</option>
+                <option value="Other">Other</option>
               </select>
             </label>
             <label>
-              <span data-i18n="received">Received</span>
+              <span>Received</span>
               <input id="receivedInput" type="date" required />
             </label>
             <label>
-              <span data-i18n="due">Due</span>
+              <span>Due</span>
               <input id="dueInput" type="date" required />
             </label>
             <label>
-              <span data-i18n="cost">Cost</span>
+              <span>Cost</span>
               <input id="costInput" type="number" min="0" step="0.01" placeholder="0.00" required />
             </label>
             <label class="wide">
-              <span data-i18n="notes">Notes</span>
-              <textarea id="notesInput" rows="3" placeholder="Shade, material, lab updates, delivery notes" data-i18n-placeholder="notesPlaceholder"></textarea>
+              <span>Notes</span>
+              <textarea id="notesInput" rows="3" placeholder="Shade, material, lab updates, delivery notes"></textarea>
             </label>
             <div class="form-actions">
-              <button class="primary-button" type="submit" data-i18n="saveRecord">Save record</button>
-              <button id="cancelRecordButton" class="ghost-button" type="button" data-i18n="cancel">Cancel</button>
+              <button class="primary-button" type="submit">Save record</button>
+              <button id="cancelRecordButton" class="ghost-button" type="button">Cancel</button>
             </div>
           </form>
 
@@ -113,40 +112,40 @@
             <table>
               <thead>
                 <tr>
-                  <th data-i18n="doctor">Doctor</th>
-                  <th data-i18n="patient">Patient</th>
-                  <th data-i18n="prosthetic">Prosthetic</th>
-                  <th data-i18n="received">Received</th>
-                  <th data-i18n="due">Due</th>
-                  <th data-i18n="cost">Cost</th>
-                  <th data-i18n="actions">Actions</th>
+                  <th>Doctor</th>
+                  <th>Patient</th>
+                  <th>Prosthetic</th>
+                  <th>Received</th>
+                  <th>Due</th>
+                  <th>Cost</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="recordsTable"></tbody>
             </table>
           </div>
-          <p id="emptyState" class="empty-state" data-i18n="emptyRecords">No records yet. Add your first doctor case to begin.</p>
+          <p id="emptyState" class="empty-state">No records yet. Add your first patient record to begin.</p>
         </section>
 
         <section id="dataPage" class="page">
           <div class="toolbar">
             <div>
-              <h2 data-i18n="pdfDownload">PDF Download</h2>
-              <p class="muted" data-i18n="pdfIntro">Choose a doctor, the records, and the fields you want in the PDF.</p>
+              <h2>PDF Download</h2>
+              <p class="muted">Choose a doctor, the records, and the fields you want in the PDF.</p>
             </div>
-            <button id="downloadPdfButton" class="primary-button" type="button" data-i18n="downloadPdf">Download PDF</button>
+            <button id="downloadPdfButton" class="primary-button" type="button">Download PDF</button>
           </div>
           <div class="export-grid">
             <section class="export-panel">
-              <h3 data-i18n="filterDoctor">Filter by doctor</h3>
+              <h3>Filter by doctor</h3>
               <select id="doctorFilter"></select>
             </section>
             <section class="export-panel">
-              <h3 data-i18n="fieldsInclude">Fields to include</h3>
+              <h3>Fields to include</h3>
               <div id="fieldChooser" class="checks"></div>
             </section>
             <section class="export-panel wide-panel">
-              <h3 data-i18n="records">Records</h3>
+              <h3>Records</h3>
               <div id="recordChooser" class="checks record-checks"></div>
             </section>
           </div>
@@ -155,31 +154,31 @@
         <section id="profilePage" class="page">
           <div class="profile-layout">
             <section class="profile-panel">
-              <h2 data-i18n="yourProfile">Your profile</h2>
+              <h2>Your profile</h2>
               <form id="profileForm" class="profile-form">
                 <label>
-                  <span data-i18n="displayName">Display name</span>
-                  <input id="displayNameInput" type="text" placeholder="Your name" data-i18n-placeholder="displayNamePlaceholder" />
+                  <span>Display name</span>
+                  <input id="displayNameInput" type="text" placeholder="Your name" />
                 </label>
                 <label>
-                  <span data-i18n="role">Specialty or role</span>
-                  <input id="roleInput" type="text" placeholder="Dentist, lab owner, coordinator..." data-i18n-placeholder="rolePlaceholder" />
+                  <span>Specialty or role</span>
+                  <input id="roleInput" type="text" placeholder="Dentist, lab owner, coordinator..." />
                 </label>
                 <label>
-                  <span data-i18n="organization">Organization</span>
-                  <input id="organizationInput" type="text" placeholder="Clinic or lab name" data-i18n-placeholder="organizationPlaceholder" />
+                  <span>Organization</span>
+                  <input id="organizationInput" type="text" placeholder="Clinic or lab name" />
                 </label>
-                <button class="primary-button" type="submit" data-i18n="saveProfile">Save profile</button>
+                <button class="primary-button" type="submit">Save profile</button>
               </form>
             </section>
             <section class="profile-panel">
-              <h2 data-i18n="theme">Theme</h2>
+              <h2>Theme</h2>
               <div class="theme-options" role="radiogroup" aria-label="Theme choices">
-                <button class="theme-choice" data-theme="light" type="button" data-i18n="light">Light</button>
-                <button class="theme-choice active" data-theme="aqua" type="button" data-i18n="aqua">Aqua</button>
-                <button class="theme-choice" data-theme="lavender" type="button" data-i18n="lavender">Lavender</button>
-                <button class="theme-choice" data-theme="midnight" type="button" data-i18n="midnight">Midnight</button>
-                <button class="theme-choice" data-theme="dark" type="button" data-i18n="dark">Dark</button>
+                <button class="theme-choice" data-theme="light" type="button">Light</button>
+                <button class="theme-choice active" data-theme="aqua" type="button">Aqua</button>
+                <button class="theme-choice" data-theme="lavender" type="button">Lavender</button>
+                <button class="theme-choice" data-theme="midnight" type="button">Midnight</button>
+                <button class="theme-choice" data-theme="dark" type="button">Dark</button>
               </div>
             </section>
           </div>
@@ -189,7 +188,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="i18n.js"></script>
     <script defer src="dashboard.js"></script>
   </body>
 </html>
