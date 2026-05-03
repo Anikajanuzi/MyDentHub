@@ -1,8 +1,21 @@
 const firebaseConfig = window.mydenthubFirebaseConfig || {};
 const storagePrefix = "mydenthub";
 const $ = (selector) => document.querySelector(selector);
-const i18n = window.MyDentHubI18n;
-const t = (key) => i18n.t(key);
+
+const text = {
+  firebaseLocal: "Firebase is not configured, so email accounts work only on this device for now.",
+  firebaseGoogleSetup: "Add your Firebase web config in firebase-config.js to enable real Google sign-in.",
+  accountCreated: "Account created. Check your email and verify it, then come back and log in.",
+  localAccountCreated: "Account created. You can now log in with this email and password.",
+  verifyFirst: "Please verify your email first. A new verification email was sent.",
+  accountExists: "An account already exists for this email on this device. Use the Log in section.",
+  noLocalAccount: "No local account exists for this email yet. Create an account first.",
+  passwordMismatch: "That password does not match this MyDentHub account.",
+  passwordHint: "Use 8+ characters with uppercase, lowercase, number, and symbol.",
+  passwordStrong: "Strong password. You are ready.",
+  passwordWeak: "Password must be stronger: use 8+ characters with uppercase, lowercase, a number, and a symbol.",
+  genericError: "Something went wrong. Please try again.",
+};
 
 const elements = {
   loginForm: $("#loginForm"),
@@ -36,7 +49,7 @@ async function getFirebaseAuth() {
 async function signInWithGoogle() {
   try {
     if (!hasFirebaseConfig()) {
-      elements.firebaseNotice.textContent = t("firebaseGoogleSetup");
+      elements.firebaseNotice.textContent = text.firebaseGoogleSetup;
       return;
     }
 
@@ -50,7 +63,7 @@ async function signInWithGoogle() {
       authType: "google",
     });
   } catch (error) {
-    elements.firebaseNotice.textContent = error.message || t("genericError");
+    elements.firebaseNotice.textContent = error.message || text.genericError;
   }
 }
 
@@ -69,7 +82,7 @@ function updateCreateStrength() {
   const score = scorePassword(password);
   elements.createStrengthBar.style.width = `${Math.min(score * 20, 100)}%`;
   elements.createStrengthBar.style.background = score >= 5 ? "#49b9ae" : score >= 3 ? "#8b84d7" : "#c7463b";
-  elements.createStrengthText.textContent = password ? score >= 5 ? t("passwordStrong") : t("passwordWeak") : t("passwordHint");
+  elements.createStrengthText.textContent = password ? score >= 5 ? text.passwordStrong : text.passwordWeak : text.passwordHint;
 }
 
 async function hashPassword(email, password) {
@@ -118,7 +131,7 @@ async function handleLogin(event) {
       const credential = await firebase.signInWithEmailAndPassword(firebase.auth, email, password);
       if (!credential.user.emailVerified) {
         await firebase.sendEmailVerification(credential.user);
-        elements.firebaseNotice.textContent = t("verifyFirst");
+        elements.firebaseNotice.textContent = text.verifyFirst;
         await firebase.signOut(firebase.auth);
         return;
       }
@@ -135,20 +148,20 @@ async function handleLogin(event) {
 
     const storedAccount = JSON.parse(localStorage.getItem(accountKey(email)) || "null");
     if (!storedAccount) {
-      elements.firebaseNotice.textContent = t("noLocalAccount");
+      elements.firebaseNotice.textContent = text.noLocalAccount;
       return;
     }
 
     const passwordHash = await hashPassword(email, password);
     if (storedAccount.passwordHash !== passwordHash) {
-      elements.firebaseNotice.textContent = t("passwordMismatch");
+      elements.firebaseNotice.textContent = text.passwordMismatch;
       return;
     }
 
     rememberEmail(email);
     enterDashboard({ id: `local:${email}`, name: email.split("@")[0], email, authType: "local" });
   } catch (error) {
-    elements.firebaseNotice.textContent = error.message || t("genericError");
+    elements.firebaseNotice.textContent = error.message || text.genericError;
   }
 }
 
@@ -159,7 +172,7 @@ async function handleCreateAccount(event) {
 
   try {
     if (scorePassword(password) < 5) {
-      elements.firebaseNotice.textContent = t("passwordWeak");
+      elements.firebaseNotice.textContent = text.passwordWeak;
       updateCreateStrength();
       return;
     }
@@ -168,13 +181,13 @@ async function handleCreateAccount(event) {
     if (firebase) {
       const credential = await firebase.createUserWithEmailAndPassword(firebase.auth, email, password);
       await firebase.sendEmailVerification(credential.user);
-      elements.firebaseNotice.textContent = t("accountCreated");
+      elements.firebaseNotice.textContent = text.accountCreated;
       await firebase.signOut(firebase.auth);
       return;
     }
 
     if (localStorage.getItem(accountKey(email))) {
-      elements.firebaseNotice.textContent = t("accountExists");
+      elements.firebaseNotice.textContent = text.accountExists;
       return;
     }
 
@@ -184,21 +197,9 @@ async function handleCreateAccount(event) {
       passwordHash,
       createdAt: new Date().toISOString(),
     }));
-    localStorage.setItem(`${storagePrefix}:lastEmail`, email);
-    elements.loginEmailInput.value = email;
-    elements.createForm.reset();
-    updateCreateStrength();
-    elements.firebaseNotice.textContent = t("localAccountCreated");
+    enterDashboard({ id: `local:${email}`, name: email.split("@")[0], email, authType: "local" });
   } catch (error) {
-    elements.firebaseNotice.textContent = error.message || t("genericError");
-  }
-}
-
-function applyLoginLanguage() {
-  i18n.applyTranslations();
-  updateCreateStrength();
-  if (!hasFirebaseConfig()) {
-    elements.firebaseNotice.textContent = t("firebaseLocal");
+    elements.firebaseNotice.textContent = error.message || text.genericError;
   }
 }
 
@@ -217,6 +218,7 @@ if (rememberedEmail) {
   elements.createEmailInput.value = rememberedEmail;
 }
 
-i18n.bindLanguageControls();
-window.addEventListener("mydenthub:languagechange", applyLoginLanguage);
-applyLoginLanguage();
+if (!hasFirebaseConfig()) {
+  elements.firebaseNotice.textContent = text.firebaseLocal;
+}
+updateCreateStrength();

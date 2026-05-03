@@ -149,9 +149,19 @@ button {
 }
 
 .login-brand {
+  position: sticky;
+  top: 0;
   display: grid;
+  min-height: 100vh;
   place-items: center;
   padding: 46px;
+}
+
+.login-logo-frame {
+  position: sticky;
+  top: 46px;
+  display: grid;
+  place-items: center;
 }
 
 .login-logo {
@@ -159,6 +169,18 @@ button {
   max-height: 70vh;
   object-fit: contain;
   filter: drop-shadow(0 24px 38px rgba(21, 42, 91, 0.12));
+  animation: logoFloat 5.5s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-14px) scale(1.015);
+  }
 }
 
 .login-card {
@@ -767,7 +789,12 @@ tr:last-child td {
   }
 
   .login-brand {
+    position: static;
     min-height: 360px;
+  }
+
+  .login-logo-frame {
+    position: static;
   }
 
   .login-card {

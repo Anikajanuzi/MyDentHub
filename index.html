@@ -12,62 +12,58 @@
   <body>
     <main class="login-page">
       <section class="login-brand" aria-label="MyDentHub brand">
-        <img class="login-logo" src="mydenthub-logo.png" alt="MyDentHub logo" />
+        <div class="login-logo-frame">
+          <img class="login-logo" src="mydenthub-logo.png" alt="MyDentHub logo" />
+        </div>
       </section>
 
       <section class="login-card" aria-labelledby="loginTitle">
-        <div class="language-toggle" aria-label="Language">
-          <span data-i18n="language">Language</span>
-          <button class="language-button active" data-language="en" type="button" data-i18n="english">English</button>
-          <button class="language-button" data-language="sq" type="button" data-i18n="albanian">Albanian</button>
-        </div>
-
-        <p class="eyebrow" data-i18n="secureAccess">Secure access</p>
-        <h1 id="loginTitle" data-i18n="welcome">Welcome to MyDentHub</h1>
-        <p class="muted" data-i18n="loginIntro">Sign in or create an account to manage your dental work organizer.</p>
+        <p class="eyebrow">Secure access</p>
+        <h1 id="loginTitle">Welcome to MyDentHub</h1>
+        <p class="muted">Sign in or create an account to manage your dental work organizer.</p>
 
         <section class="auth-panel" aria-labelledby="loginPanelTitle">
-          <h2 id="loginPanelTitle" data-i18n="login">Log in</h2>
+          <h2 id="loginPanelTitle">Log in</h2>
           <form id="loginForm" class="auth-form">
             <label>
-              <span data-i18n="email">Email</span>
+              <span>Email</span>
               <input id="loginEmailInput" type="email" autocomplete="email" required />
             </label>
             <label>
-              <span data-i18n="password">Password</span>
+              <span>Password</span>
               <input id="loginPasswordInput" type="password" autocomplete="current-password" required />
             </label>
             <label class="remember-row">
               <input id="rememberEmailInput" type="checkbox" checked />
-              <span data-i18n="rememberEmail">Remember my email on this device</span>
+              <span>Remember my email on this device</span>
             </label>
-            <button id="loginSubmitButton" class="primary-button" type="submit" data-i18n="login">Log in</button>
+            <button id="loginSubmitButton" class="primary-button" type="submit">Log in</button>
           </form>
 
           <button id="googleLoginButton" class="google-button" type="button">
             <span class="google-icon" aria-hidden="true">G</span>
-            <span data-i18n="continueGoogle">Continue with Google</span>
+            <span>Continue with Google</span>
           </button>
         </section>
 
-        <div class="divider"><span data-i18n="or">or</span></div>
+        <div class="divider"><span>or</span></div>
 
         <section class="auth-panel" aria-labelledby="createPanelTitle">
-          <h2 id="createPanelTitle" data-i18n="createAccount">Create account</h2>
+          <h2 id="createPanelTitle">Create account</h2>
           <form id="createForm" class="auth-form">
             <label>
-              <span data-i18n="email">Email</span>
+              <span>Email</span>
               <input id="createEmailInput" type="email" autocomplete="email" required />
             </label>
             <label>
-              <span data-i18n="password">Password</span>
+              <span>Password</span>
               <input id="createPasswordInput" type="password" autocomplete="new-password" required />
             </label>
             <div id="createStrengthWrap" class="strength-wrap">
               <div class="strength-track"><span id="createStrengthBar"></span></div>
-              <p id="createStrengthText" data-i18n="passwordHint">Use 8+ characters with uppercase, lowercase, number, and symbol.</p>
+              <p id="createStrengthText">Use 8+ characters with uppercase, lowercase, number, and symbol.</p>
             </div>
-            <button id="createSubmitButton" class="primary-button" type="submit" data-i18n="createAccount">Create account</button>
+            <button id="createSubmitButton" class="primary-button" type="submit">Create account</button>
           </form>
         </section>
 
@@ -76,7 +72,6 @@
     </main>
 
     <script src="firebase-config.js"></script>
-    <script src="i18n.js"></script>
     <script defer src="login.js"></script>
   </body>
 </html>

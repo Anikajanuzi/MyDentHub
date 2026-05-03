@@ -482,13 +482,7 @@ $$(".theme-choice").forEach((button) => {
 });
 
 const existingSession = localStorage.getItem(`${storagePrefix}:session`);
-i18n.bindLanguageControls();
-window.addEventListener("mydenthub:languagechange", () => {
-  if (!state.user) return;
-  i18n.applyTranslations();
-  elements.pageTitle.textContent = t(elements.pageTitle.dataset.pageTitleKey || "home");
-  renderAll();
-});
+i18n.applyTranslations();
 
 if (!existingSession) {
   window.location.href = "index.html";
