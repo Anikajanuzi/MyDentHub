@@ -128,24 +128,31 @@
         </section>
 
         <section id="dataPage" class="page">
-          <div class="toolbar">
+          <div class="toolbar data-toolbar">
             <div>
-              <h2>PDF Download</h2>
-              <p class="muted">Choose a doctor, the records, and the fields you want in the PDF.</p>
+              <h2>Data export</h2>
+              <p class="muted">Choose exactly what goes into the PDF.</p>
+            </div>
+            <div class="data-summary" aria-label="Saved data summary">
+              <span><strong id="dataRecordCount">0</strong> records</span>
+              <span><strong id="dataDoctorCount">0</strong> doctors</span>
+              <span><strong id="dataTotalCost">$0.00</strong> total</span>
             </div>
             <button id="downloadPdfButton" class="primary-button" type="button">Download PDF</button>
           </div>
           <div class="export-grid">
-            <section class="export-panel">
-              <h3>Filter by doctor</h3>
-              <select id="doctorFilter"></select>
-            </section>
-            <section class="export-panel">
-              <h3>Fields to include</h3>
-              <div id="fieldChooser" class="checks"></div>
+            <section class="export-panel export-controls-panel">
+              <label>
+                <span>Doctor</span>
+                <select id="doctorFilter"></select>
+              </label>
+              <div>
+                <h3>Fields</h3>
+                <div id="fieldChooser" class="checks compact-checks"></div>
+              </div>
             </section>
             <section class="export-panel wide-panel">
-              <h3>Records</h3>
+              <h3>Records to include</h3>
               <div id="recordChooser" class="checks record-checks"></div>
             </section>
           </div>

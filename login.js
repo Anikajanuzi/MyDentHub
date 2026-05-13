@@ -5,7 +5,7 @@ const $ = (selector) => document.querySelector(selector);
 const text = {
   firebaseLocal: "Firebase is not configured, so email accounts work only on this device for now.",
   firebaseGoogleSetup: "Add your Firebase web config in firebase-config.js to enable real Google sign-in.",
-  accountCreated: "Account created. Check your email and verify it, then come back and log in.",
+  accountCreated: "Account created. You are signed in. Check your email later to verify the account.",
   localAccountCreated: "Account created. You can now log in with this email and password.",
   verifyFirst: "Please verify your email first. A new verification email was sent.",
   accountExists: "An account already exists for this email on this device. Use the Log in section.",
@@ -129,13 +129,6 @@ async function handleLogin(event) {
     const firebase = await getFirebaseAuth();
     if (firebase) {
       const credential = await firebase.signInWithEmailAndPassword(firebase.auth, email, password);
-      if (!credential.user.emailVerified) {
-        await firebase.sendEmailVerification(credential.user);
-        elements.firebaseNotice.textContent = text.verifyFirst;
-        await firebase.signOut(firebase.auth);
-        return;
-      }
-
       rememberEmail(email);
       enterDashboard({
         id: credential.user.uid,
@@ -180,9 +173,14 @@ async function handleCreateAccount(event) {
     const firebase = await getFirebaseAuth();
     if (firebase) {
       const credential = await firebase.createUserWithEmailAndPassword(firebase.auth, email, password);
-      await firebase.sendEmailVerification(credential.user);
-      elements.firebaseNotice.textContent = text.accountCreated;
-      await firebase.signOut(firebase.auth);
+      firebase.sendEmailVerification(credential.user).catch(() => {});
+      rememberEmail(email);
+      enterDashboard({
+        id: credential.user.uid,
+        name: credential.user.displayName || email.split("@")[0],
+        email,
+        authType: "firebase",
+      });
       return;
     }
 

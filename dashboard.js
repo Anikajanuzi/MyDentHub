@@ -52,6 +52,9 @@ const elements = {
   cancelRecordButton: $("#cancelRecordButton"),
   recordsTable: $("#recordsTable"),
   emptyState: $("#emptyState"),
+  dataRecordCount: $("#dataRecordCount"),
+  dataDoctorCount: $("#dataDoctorCount"),
+  dataTotalCost: $("#dataTotalCost"),
   doctorFilter: $("#doctorFilter"),
   fieldChooser: $("#fieldChooser"),
   recordChooser: $("#recordChooser"),
@@ -64,6 +67,18 @@ const elements = {
 
 function storageKey(suffix) {
   return `${storagePrefix}:${state.user.id}:${suffix}`;
+}
+
+function storageKeyForUser(userId, suffix) {
+  return `${storagePrefix}:${userId}:${suffix}`;
+}
+
+function userEmailKey() {
+  return String(state.user?.email || state.user?.id || "user").trim().toLowerCase();
+}
+
+function userDocumentId() {
+  return userEmailKey().replaceAll("/", "%2F");
 }
 
 function hasFirebaseConfig() {
@@ -84,9 +99,41 @@ async function getCloudStore() {
 async function loadUserData() {
   const cloud = await getCloudStore();
   if (cloud) {
-    const docRef = cloud.doc(cloud.db, "users", state.user.id);
+    const docRef = cloud.doc(cloud.db, "users", userDocumentId());
     const snapshot = await cloud.getDoc(docRef);
-    const data = snapshot.exists() ? snapshot.data() : {};
+    let data = snapshot.exists() ? snapshot.data() : {};
+
+    if (!snapshot.exists() && state.user.id && state.user.id !== userDocumentId()) {
+      const legacyRef = cloud.doc(cloud.db, "users", state.user.id);
+      const legacySnapshot = await cloud.getDoc(legacyRef);
+      if (legacySnapshot.exists()) {
+        data = legacySnapshot.data();
+        await cloud.setDoc(docRef, data, { merge: true });
+      }
+    }
+
+    if (!data.records?.length && !data.doctors?.length) {
+      const localUserId = `local:${userEmailKey()}`;
+      const localRecords = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "records")) || "[]");
+      const localDoctors = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "doctors")) || "[]");
+      const localProfile = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "profile")) || "{}");
+      const localTheme = localStorage.getItem(storageKeyForUser(localUserId, "theme"));
+
+      if (localRecords.length || localDoctors.length || Object.keys(localProfile).length || localTheme) {
+        data = {
+          records: localRecords,
+          doctors: localDoctors,
+          profile: localProfile,
+          theme: localTheme || "aqua",
+        };
+        await cloud.setDoc(docRef, {
+          ...data,
+          email: userEmailKey(),
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      }
+    }
+
     state.records = data.records || [];
     state.doctors = data.doctors || [];
     state.profile = data.profile || {};
@@ -106,7 +153,11 @@ async function loadUserData() {
 async function saveCloudData(partial) {
   const cloud = await getCloudStore();
   if (!cloud) return false;
-  await cloud.setDoc(cloud.doc(cloud.db, "users", state.user.id), partial, { merge: true });
+  await cloud.setDoc(cloud.doc(cloud.db, "users", userDocumentId()), {
+    ...partial,
+    email: userEmailKey(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
   return true;
 }
 
@@ -174,6 +225,11 @@ function renderRecords() {
 }
 
 function renderExportControls() {
+  const totalCost = state.records.reduce((sum, record) => sum + Number(record.cost || 0), 0);
+  elements.dataRecordCount.textContent = String(state.records.length);
+  elements.dataDoctorCount.textContent = String(new Set(state.records.map((record) => record.doctor).filter(Boolean)).size);
+  elements.dataTotalCost.textContent = formatCurrency(totalCost);
+
   const doctors = ["__all__", ...new Set(state.records.map((record) => record.doctor).filter(Boolean))];
   const selectedDoctor = elements.doctorFilter.value || "__all__";
   elements.doctorFilter.innerHTML = doctors.map((doctor) => {
