@@ -25,6 +25,7 @@
         <section class="auth-panel" aria-labelledby="loginPanelTitle">
           <h2 id="loginPanelTitle">Log in</h2>
           <form id="loginForm" class="auth-form">
+            <p id="loginEmailHint" class="field-hint" aria-live="polite"></p>
             <label>
               <span>Email</span>
               <input id="loginEmailInput" type="email" autocomplete="email" required />
@@ -33,6 +34,7 @@
               <span>Password</span>
               <input id="loginPasswordInput" type="password" autocomplete="current-password" required />
             </label>
+            <button id="forgotPasswordButton" class="link-button" type="button">Forgot password?</button>
             <label class="remember-row">
               <input id="rememberEmailInput" type="checkbox" checked />
               <span>Remember my email on this device</span>

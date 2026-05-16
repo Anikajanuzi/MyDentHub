@@ -9,8 +9,12 @@ const text = {
   localAccountCreated: "Account created. You can now log in with this email and password.",
   verifyFirst: "Please verify your email first. A new verification email was sent.",
   accountExists: "An account already exists for this email on this device. Use the Log in section.",
-  noLocalAccount: "No local account exists for this email yet. Create an account first.",
+  noLocalAccount: "Create an account first. No MyDentHub account uses this email yet.",
+  noFirebaseAccount: "Create an account first. No MyDentHub account uses this email yet.",
   passwordMismatch: "That password does not match this MyDentHub account.",
+  resetEmailSent: "If this email belongs to a MyDentHub account, a password reset email has been sent.",
+  resetNeedsEmail: "Enter your email address first, then choose Forgot password.",
+  resetNeedsFirebase: "Password reset by email is available after Firebase is configured. Local-only accounts cannot receive reset emails.",
   passwordHint: "Use 8+ characters with uppercase, lowercase, number, and symbol.",
   passwordStrong: "Strong password. You are ready.",
   passwordWeak: "Password must be stronger: use 8+ characters with uppercase, lowercase, a number, and a symbol.",
@@ -20,6 +24,7 @@ const text = {
 const elements = {
   loginForm: $("#loginForm"),
   createForm: $("#createForm"),
+  loginEmailHint: $("#loginEmailHint"),
   loginEmailInput: $("#loginEmailInput"),
   loginPasswordInput: $("#loginPasswordInput"),
   createEmailInput: $("#createEmailInput"),
@@ -27,6 +32,7 @@ const elements = {
   rememberEmailInput: $("#rememberEmailInput"),
   createStrengthBar: $("#createStrengthBar"),
   createStrengthText: $("#createStrengthText"),
+  forgotPasswordButton: $("#forgotPasswordButton"),
   googleLoginButton: $("#googleLoginButton"),
   firebaseNotice: $("#firebaseNotice"),
 };
@@ -120,14 +126,44 @@ function enterDashboard(user) {
   window.location.href = "dashboard.html";
 }
 
+function showLoginEmailHint(message = "") {
+  elements.loginEmailHint.textContent = message;
+  elements.loginEmailHint.hidden = !message;
+}
+
+function handleLoginError(error) {
+  if (error?.code === "auth/user-not-found") {
+    showLoginEmailHint(text.noFirebaseAccount);
+    elements.createEmailInput.value = elements.loginEmailInput.value.trim().toLowerCase();
+    elements.firebaseNotice.textContent = "";
+    return;
+  }
+
+  if (error?.code === "auth/wrong-password" || error?.code === "auth/invalid-credential") {
+    elements.firebaseNotice.textContent = text.passwordMismatch;
+    return;
+  }
+
+  elements.firebaseNotice.textContent = error.message || text.genericError;
+}
+
 async function handleLogin(event) {
   event.preventDefault();
   const email = elements.loginEmailInput.value.trim().toLowerCase();
   const password = elements.loginPasswordInput.value;
+  showLoginEmailHint();
 
   try {
     const firebase = await getFirebaseAuth();
     if (firebase) {
+      const methods = await firebase.fetchSignInMethodsForEmail(firebase.auth, email);
+      if (!methods.length) {
+        showLoginEmailHint(text.noFirebaseAccount);
+        elements.createEmailInput.value = email;
+        elements.firebaseNotice.textContent = "";
+        return;
+      }
+
       const credential = await firebase.signInWithEmailAndPassword(firebase.auth, email, password);
       rememberEmail(email);
       enterDashboard({
@@ -141,7 +177,9 @@ async function handleLogin(event) {
 
     const storedAccount = JSON.parse(localStorage.getItem(accountKey(email)) || "null");
     if (!storedAccount) {
-      elements.firebaseNotice.textContent = text.noLocalAccount;
+      showLoginEmailHint(text.noLocalAccount);
+      elements.createEmailInput.value = email;
+      elements.firebaseNotice.textContent = "";
       return;
     }
 
@@ -154,6 +192,37 @@ async function handleLogin(event) {
     rememberEmail(email);
     enterDashboard({ id: `local:${email}`, name: email.split("@")[0], email, authType: "local" });
   } catch (error) {
+    handleLoginError(error);
+  }
+}
+
+async function handleForgotPassword() {
+  const email = elements.loginEmailInput.value.trim().toLowerCase();
+  showLoginEmailHint();
+
+  if (!email) {
+    showLoginEmailHint(text.resetNeedsEmail);
+    elements.loginEmailInput.focus();
+    return;
+  }
+
+  try {
+    const firebase = await getFirebaseAuth();
+    if (!firebase) {
+      elements.firebaseNotice.textContent = text.resetNeedsFirebase;
+      return;
+    }
+
+    await firebase.sendPasswordResetEmail(firebase.auth, email);
+    elements.firebaseNotice.textContent = text.resetEmailSent;
+  } catch (error) {
+    if (error?.code === "auth/user-not-found") {
+      showLoginEmailHint(text.noFirebaseAccount);
+      elements.createEmailInput.value = email;
+      elements.firebaseNotice.textContent = "";
+      return;
+    }
+
     elements.firebaseNotice.textContent = error.message || text.genericError;
   }
 }
@@ -204,6 +273,7 @@ async function handleCreateAccount(event) {
 elements.loginForm.addEventListener("submit", handleLogin);
 elements.createForm.addEventListener("submit", handleCreateAccount);
 elements.createPasswordInput.addEventListener("input", updateCreateStrength);
+elements.forgotPasswordButton.addEventListener("click", handleForgotPassword);
 elements.googleLoginButton.addEventListener("click", signInWithGoogle);
 
 if (localStorage.getItem(`${storagePrefix}:session`)) {

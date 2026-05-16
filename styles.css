@@ -387,6 +387,37 @@ textarea:focus {
   width: auto;
 }
 
+.field-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.field-hint:empty {
+  display: none;
+}
+
+.link-button {
+  width: fit-content;
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font-weight: 800;
+  text-align: left;
+}
+
+.link-button:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 .strength-track {
   height: 9px;
   overflow: hidden;
