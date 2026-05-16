@@ -317,11 +317,12 @@ async function logout() {
   window.location.href = "index.html";
 }
 
-function renderUser() {
+function renderUser(updateProfileInputs = true) {
   const profileName = state.profile.displayName || state.user.name || state.user.email;
   elements.userName.textContent = profileName;
   elements.userEmail.textContent = state.user.email;
   elements.userInitial.textContent = profileName.slice(0, 1).toUpperCase();
+  if (!updateProfileInputs) return;
   elements.displayNameInput.value = state.profile.displayName || state.user.name || "";
   elements.roleInput.value = state.profile.role || "";
   elements.organizationInput.value = state.profile.organization || "";
@@ -380,9 +381,12 @@ function renderExportControls() {
 
   elements.recordChooser.innerHTML = filtered.length
     ? filtered.map((record) => `
-      <label>
+      <label class="record-choice">
         <input type="checkbox" value="${record.id}" ${state.selectedRecordIds.includes(record.id) ? "checked" : ""} />
-        ${escapeHtml(record.doctor)} - ${escapeHtml(record.patient)} - ${escapeHtml(record.prosthetic)}
+        <span>
+          <strong>${escapeHtml(record.patient || "Unnamed patient")}</strong>
+          <small>${escapeHtml(record.doctor || "No doctor")} · ${escapeHtml(record.prosthetic || "No prosthetic")}</small>
+        </span>
       </label>
     `).join("")
     : `<p class="muted">No records match this doctor filter.</p>`;
@@ -396,12 +400,24 @@ function renderDoctorOptions(selectedDoctor = elements.doctorInput.value) {
   if (state.doctors.includes(selectedDoctor)) elements.doctorInput.value = selectedDoctor;
 }
 
+function renderThemeChoices() {
+  $$(".theme-choice").forEach((button) => button.classList.toggle("active", button.dataset.theme === state.theme));
+}
+
 function renderAll() {
   renderUser();
   renderDoctorOptions();
   renderRecords();
   renderExportControls();
-  $$(".theme-choice").forEach((button) => button.classList.toggle("active", button.dataset.theme === state.theme));
+  renderThemeChoices();
+}
+
+function readProfileInputs() {
+  return {
+    displayName: elements.displayNameInput.value.trim(),
+    role: elements.roleInput.value.trim(),
+    organization: elements.organizationInput.value.trim(),
+  };
 }
 
 function filteredRecords() {
@@ -512,53 +528,80 @@ async function downloadPdf() {
   const logoData = await getLogoDataUrl();
   const pdf = new jsPDF({ unit: "pt", format: "letter" });
   const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 44;
-  let y = 54;
+  const contentWidth = pageWidth - margin * 2;
+  const bottomMargin = 48;
+  let y = 148;
 
-  pdf.setFillColor(21, 42, 91);
-  pdf.rect(0, 0, pageWidth, 112, "F");
-  pdf.setFillColor(73, 185, 174);
-  pdf.rect(0, 104, pageWidth, 8, "F");
-  if (logoData) pdf.addImage(logoData, "PNG", margin, 16, 128, 72);
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(22);
-  pdf.text("MyDentHub Case Export", margin + 148, y);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(10);
-  pdf.text(`Prepared for ${state.profile.displayName || state.user.email}`, margin + 148, y + 22);
-  if (state.profile.organization) {
-    pdf.text(`Organization: ${state.profile.organization}`, margin + 148, y + 38);
+  function drawHeader() {
+    pdf.setFillColor(21, 42, 91);
+    pdf.rect(0, 0, pageWidth, 112, "F");
+    pdf.setFillColor(73, 185, 174);
+    pdf.rect(0, 104, pageWidth, 8, "F");
+    if (logoData) pdf.addImage(logoData, "PNG", margin, 16, 128, 72);
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(22);
+    pdf.text("MyDentHub Case Export", margin + 148, 54);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Prepared for ${state.profile.displayName || state.user.email}`, margin + 148, 76);
+    if (state.profile.organization) {
+      pdf.text(`Organization: ${state.profile.organization}`, margin + 148, 92);
+    }
   }
-  y = 148;
+
+  drawHeader();
 
   selected.forEach((record, index) => {
-    if (y > 690) {
+    const selectedEntries = state.selectedFields.map((fieldKey) => {
+      const field = fields.find((item) => item.key === fieldKey);
+      const rawValue = formatPdfValue(record, fieldKey) || "-";
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      return {
+        label: field.label,
+        lines: pdf.splitTextToSize(String(rawValue), contentWidth - 144),
+      };
+    });
+    const detailsHeight = selectedEntries.reduce((height, entry) => height + Math.max(entry.lines.length, 1) * 13 + 6, 0);
+    const boxHeight = 46 + detailsHeight + 16;
+
+    if (y + boxHeight > pageHeight - bottomMargin) {
       pdf.addPage();
-      y = 54;
+      drawHeader();
+      y = 148;
     }
 
-    pdf.setFillColor(index % 2 === 0 ? 239 : 255, index % 2 === 0 ? 250 : 255, index % 2 === 0 ? 249 : 255);
-    pdf.roundedRect(margin, y - 18, pageWidth - margin * 2, 42 + state.selectedFields.length * 18, 8, 8, "F");
+    const boxTop = y;
+    pdf.setFillColor(index % 2 === 0 ? 248 : 255, index % 2 === 0 ? 253 : 255, index % 2 === 0 ? 252 : 255);
+    pdf.setDrawColor(190, 220, 221);
+    pdf.setLineWidth(0.9);
+    pdf.roundedRect(margin, boxTop, contentWidth, boxHeight, 8, 8, "FD");
+
     pdf.setTextColor(21, 42, 91);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
-    pdf.text(`${record.doctor} - ${record.patient}`, margin + 16, y);
-    y += 22;
-
+    pdf.text(`${record.patient || "Unnamed patient"}`, margin + 16, y + 24);
+    pdf.setTextColor(93, 104, 126);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
-    state.selectedFields.forEach((fieldKey) => {
-      const field = fields.find((item) => item.key === fieldKey);
-      const rawValue = formatPdfValue(record, fieldKey);
+    pdf.text(`${record.doctor || "No doctor"} - ${record.prosthetic || "No prosthetic"}`, margin + 16, y + 40);
+
+    y += 62;
+
+    selectedEntries.forEach((entry) => {
       pdf.setTextColor(93, 104, 126);
-      pdf.text(`${field.label}:`, margin + 16, y);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`${entry.label}:`, margin + 16, y);
       pdf.setTextColor(20, 32, 38);
-      pdf.text(String(rawValue || "-"), margin + 112, y);
-      y += 18;
+      pdf.setFont("helvetica", "normal");
+      pdf.text(entry.lines, margin + 112, y);
+      y += Math.max(entry.lines.length, 1) * 13 + 6;
     });
 
-    y += 22;
+    y = boxTop + boxHeight + 16;
   });
 
   pdf.save(`mydenthub-export-${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -655,11 +698,7 @@ elements.downloadPdfButton.addEventListener("click", downloadPdf);
 
 elements.profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  state.profile = {
-    displayName: elements.displayNameInput.value.trim(),
-    role: elements.roleInput.value.trim(),
-    organization: elements.organizationInput.value.trim(),
-  };
+  state.profile = readProfileInputs();
   await saveProfile();
   renderUser();
 });
@@ -668,10 +707,12 @@ elements.deleteAccountForm.addEventListener("submit", deleteAccount);
 
 $$(".theme-choice").forEach((button) => {
   button.addEventListener("click", () => {
+    state.profile = readProfileInputs();
     state.theme = button.dataset.theme;
     applyTheme();
     saveProfile();
-    renderAll();
+    renderThemeChoices();
+    renderUser(false);
   });
 });
 
