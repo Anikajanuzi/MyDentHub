@@ -188,6 +188,22 @@
                 <button class="theme-choice" data-theme="dark" type="button">Dark</button>
               </div>
             </section>
+            <section class="profile-panel danger-panel">
+              <h2>Delete account</h2>
+              <p class="muted">This removes the account and all saved records. You can create a new account with the same email afterward.</p>
+              <form id="deleteAccountForm" class="profile-form">
+                <label>
+                  <span>Password</span>
+                  <input id="deletePasswordInput" type="password" autocomplete="current-password" required />
+                </label>
+                <label>
+                  <span>Re-enter password</span>
+                  <input id="deleteConfirmPasswordInput" type="password" autocomplete="current-password" required />
+                </label>
+                <button id="deleteAccountButton" class="danger-button" type="submit">Delete account</button>
+                <p id="deleteAccountNotice" class="notice"></p>
+              </form>
+            </section>
           </div>
         </section>
       </section>

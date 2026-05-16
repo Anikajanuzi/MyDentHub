@@ -63,6 +63,11 @@ const elements = {
   displayNameInput: $("#displayNameInput"),
   roleInput: $("#roleInput"),
   organizationInput: $("#organizationInput"),
+  deleteAccountForm: $("#deleteAccountForm"),
+  deletePasswordInput: $("#deletePasswordInput"),
+  deleteConfirmPasswordInput: $("#deleteConfirmPasswordInput"),
+  deleteAccountButton: $("#deleteAccountButton"),
+  deleteAccountNotice: $("#deleteAccountNotice"),
 };
 
 function storageKey(suffix) {
@@ -71,6 +76,10 @@ function storageKey(suffix) {
 
 function storageKeyForUser(userId, suffix) {
   return `${storagePrefix}:${userId}:${suffix}`;
+}
+
+function accountKey(email) {
+  return `${storagePrefix}:account:${email.trim().toLowerCase()}`;
 }
 
 function userEmailKey() {
@@ -94,6 +103,34 @@ async function getCloudStore() {
     db: firestoreModule.getFirestore(app),
     ...firestoreModule,
   };
+}
+
+async function getFirebaseAuth() {
+  if (!hasFirebaseConfig()) return null;
+  const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
+  const authModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  return {
+    auth: authModule.getAuth(app),
+    ...authModule,
+  };
+}
+
+async function hashPassword(email, password) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const value = `mydenthub:${normalizedEmail}:${password}`;
+
+  if (window.crypto?.subtle) {
+    const bytes = new TextEncoder().encode(value);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(hashBuffer), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index) | 0;
+  }
+  return `fallback-${hash}`;
 }
 
 async function loadUserData() {
@@ -171,6 +208,98 @@ async function saveProfile() {
   if (await saveCloudData({ profile: state.profile, theme: state.theme })) return;
   localStorage.setItem(storageKey("profile"), JSON.stringify(state.profile));
   localStorage.setItem(storageKey("theme"), state.theme);
+}
+
+function clearLocalUserData(userId) {
+  ["records", "doctors", "profile", "theme"].forEach((suffix) => {
+    localStorage.removeItem(storageKeyForUser(userId, suffix));
+  });
+}
+
+function clearSessionAndRedirect() {
+  const email = userEmailKey();
+  localStorage.removeItem(`${storagePrefix}:session`);
+  if (localStorage.getItem(`${storagePrefix}:lastEmail`) === email) {
+    localStorage.removeItem(`${storagePrefix}:lastEmail`);
+  }
+  window.location.href = "index.html";
+}
+
+async function deleteCloudUserData() {
+  const cloud = await getCloudStore();
+  if (!cloud) return;
+
+  await cloud.deleteDoc(cloud.doc(cloud.db, "users", userDocumentId()));
+  if (state.user.id && state.user.id !== userDocumentId()) {
+    await cloud.deleteDoc(cloud.doc(cloud.db, "users", state.user.id)).catch(() => {});
+  }
+}
+
+async function deleteLocalAccount(password) {
+  const email = userEmailKey();
+  const storedAccount = JSON.parse(localStorage.getItem(accountKey(email)) || "null");
+  const passwordHash = await hashPassword(email, password);
+
+  if (!storedAccount || storedAccount.passwordHash !== passwordHash) {
+    throw new Error("That password does not match this account.");
+  }
+
+  clearLocalUserData(state.user.id);
+  clearLocalUserData(`local:${email}`);
+  localStorage.removeItem(accountKey(email));
+}
+
+async function deleteFirebaseEmailAccount(password) {
+  const firebase = await getFirebaseAuth();
+  if (!firebase) throw new Error("Firebase is not configured for this account.");
+
+  const credential = await firebase.signInWithEmailAndPassword(firebase.auth, userEmailKey(), password);
+  await deleteCloudUserData();
+  clearLocalUserData(state.user.id);
+  clearLocalUserData(`local:${userEmailKey()}`);
+  await firebase.deleteUser(credential.user);
+}
+
+async function deleteAccount(event) {
+  event.preventDefault();
+  const password = elements.deletePasswordInput.value;
+  const confirmPassword = elements.deleteConfirmPasswordInput.value;
+
+  elements.deleteAccountNotice.textContent = "";
+
+  if (!password || !confirmPassword) {
+    elements.deleteAccountNotice.textContent = "Enter your password twice to delete the account.";
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    elements.deleteAccountNotice.textContent = "The two passwords do not match.";
+    return;
+  }
+
+  if (state.user.authType === "google") {
+    elements.deleteAccountNotice.textContent = "Google sign-in accounts do not have a MyDentHub password. Use an email/password account to delete with a password.";
+    return;
+  }
+
+  if (!confirm("Delete this account and all saved data? This cannot be undone.")) return;
+
+  elements.deleteAccountButton.disabled = true;
+  elements.deleteAccountButton.textContent = "Deleting...";
+
+  try {
+    if (state.user.authType === "firebase") {
+      await deleteFirebaseEmailAccount(password);
+    } else {
+      await deleteLocalAccount(password);
+    }
+
+    clearSessionAndRedirect();
+  } catch (error) {
+    elements.deleteAccountNotice.textContent = error.message || "Could not delete this account. Please try again.";
+    elements.deleteAccountButton.disabled = false;
+    elements.deleteAccountButton.textContent = "Delete account";
+  }
 }
 
 function normalizeDoctors(doctors) {
@@ -534,6 +663,8 @@ elements.profileForm.addEventListener("submit", async (event) => {
   await saveProfile();
   renderUser();
 });
+
+elements.deleteAccountForm.addEventListener("submit", deleteAccount);
 
 $$(".theme-choice").forEach((button) => {
   button.addEventListener("click", () => {

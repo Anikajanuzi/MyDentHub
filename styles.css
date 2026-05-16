@@ -224,7 +224,8 @@ button {
 .ghost-button,
 .nav-item,
 .theme-choice,
-.row-action {
+.row-action,
+.danger-button {
   min-height: 44px;
   border: 0;
   border-radius: 8px;
@@ -422,6 +423,21 @@ textarea:focus {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
+}
+
+.danger-button {
+  padding: 0 18px;
+  background: #a43e2f;
+  color: #ffffff;
+}
+
+.danger-button:hover {
+  background: #843024;
+}
+
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
 }
 
 .app-shell {
@@ -793,6 +809,28 @@ tr:last-child td {
   background: var(--panel-bg);
 }
 
+.danger-panel {
+  grid-column: 1 / -1;
+  border-color: #f1c4bd;
+  background: color-mix(in srgb, var(--panel-bg) 88%, #fff0ed);
+}
+
+.danger-panel h2 {
+  color: #a43e2f;
+}
+
+.danger-panel .profile-form {
+  grid-template-columns: repeat(2, minmax(180px, 1fr)) auto;
+  align-items: end;
+}
+
+.danger-panel .notice {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #a43e2f;
+  font-weight: 700;
+}
+
 .export-panel h3 {
   margin: 0 0 14px;
   color: var(--primary);
@@ -892,6 +930,7 @@ tr:last-child td {
   .export-grid,
   .record-form,
   .doctor-manager,
+  .danger-panel .profile-form,
   .profile-layout {
     grid-template-columns: 1fr;
   }
