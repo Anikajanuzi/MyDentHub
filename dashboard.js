@@ -4,6 +4,7 @@ const firebaseConfig = window.mydenthubFirebaseConfig || {};
 
 const fields = [
   { key: "doctor", label: "Doctor" },
+  { key: "technician", label: "Technician" },
   { key: "patient", label: "Patient" },
   { key: "prosthetic", label: "Prosthetic" },
   { key: "received", label: "Received" },
@@ -22,6 +23,7 @@ let state = {
   user: null,
   records: [],
   doctors: [],
+  technicians: [],
   profile: {},
   theme: "aqua",
   selectedRecordIds: [],
@@ -43,6 +45,9 @@ const elements = {
   doctorInput: $("#doctorInput"),
   newDoctorInput: $("#newDoctorInput"),
   addDoctorButton: $("#addDoctorButton"),
+  technicianInput: $("#technicianInput"),
+  newTechnicianInput: $("#newTechnicianInput"),
+  addTechnicianButton: $("#addTechnicianButton"),
   patientInput: $("#patientInput"),
   prostheticInput: $("#prostheticInput"),
   receivedInput: $("#receivedInput"),
@@ -149,17 +154,19 @@ async function loadUserData() {
       }
     }
 
-    if (!data.records?.length && !data.doctors?.length) {
+    if (!data.records?.length && !data.doctors?.length && !data.technicians?.length) {
       const localUserId = `local:${userEmailKey()}`;
       const localRecords = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "records")) || "[]");
       const localDoctors = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "doctors")) || "[]");
+      const localTechnicians = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "technicians")) || "[]");
       const localProfile = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "profile")) || "{}");
       const localTheme = localStorage.getItem(storageKeyForUser(localUserId, "theme"));
 
-      if (localRecords.length || localDoctors.length || Object.keys(localProfile).length || localTheme) {
+      if (localRecords.length || localDoctors.length || localTechnicians.length || Object.keys(localProfile).length || localTheme) {
         data = {
           records: localRecords,
           doctors: localDoctors,
+          technicians: localTechnicians,
           profile: localProfile,
           theme: localTheme || "aqua",
         };
@@ -173,16 +180,19 @@ async function loadUserData() {
 
     state.records = data.records || [];
     state.doctors = data.doctors || [];
+    state.technicians = data.technicians || [];
     state.profile = data.profile || {};
     state.theme = data.theme || "aqua";
   } else {
     state.records = JSON.parse(localStorage.getItem(storageKey("records")) || "[]");
     state.doctors = JSON.parse(localStorage.getItem(storageKey("doctors")) || "[]");
+    state.technicians = JSON.parse(localStorage.getItem(storageKey("technicians")) || "[]");
     state.profile = JSON.parse(localStorage.getItem(storageKey("profile")) || "{}");
     state.theme = localStorage.getItem(storageKey("theme")) || "aqua";
   }
 
   state.doctors = normalizeDoctors([...state.doctors, ...state.records.map((record) => record.doctor)]);
+  state.technicians = normalizeNames([...state.technicians, ...state.records.map((record) => record.technician)]);
   state.selectedRecordIds = state.records.map((record) => record.id);
   state.selectedFields = fields.map((field) => field.key);
 }
@@ -199,9 +209,10 @@ async function saveCloudData(partial) {
 }
 
 async function saveRecords() {
-  if (await saveCloudData({ records: state.records, doctors: state.doctors })) return;
+  if (await saveCloudData({ records: state.records, doctors: state.doctors, technicians: state.technicians })) return;
   localStorage.setItem(storageKey("records"), JSON.stringify(state.records));
   localStorage.setItem(storageKey("doctors"), JSON.stringify(state.doctors));
+  localStorage.setItem(storageKey("technicians"), JSON.stringify(state.technicians));
 }
 
 async function saveProfile() {
@@ -211,7 +222,7 @@ async function saveProfile() {
 }
 
 function clearLocalUserData(userId) {
-  ["records", "doctors", "profile", "theme"].forEach((suffix) => {
+  ["records", "doctors", "technicians", "profile", "theme"].forEach((suffix) => {
     localStorage.removeItem(storageKeyForUser(userId, suffix));
   });
 }
@@ -303,7 +314,11 @@ async function deleteAccount(event) {
 }
 
 function normalizeDoctors(doctors) {
-  return [...new Set(doctors.map((doctor) => String(doctor || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  return normalizeNames(doctors);
+}
+
+function normalizeNames(names) {
+  return [...new Set(names.map((name) => String(name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
 async function logout() {
@@ -336,6 +351,7 @@ function renderRecords() {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${escapeHtml(record.doctor)}</td>
+      <td>${escapeHtml(record.technician || "-")}</td>
       <td>${escapeHtml(record.patient)}</td>
       <td>${escapeHtml(record.prosthetic)}</td>
       <td>${formatDate(record.received)}</td>
@@ -385,7 +401,7 @@ function renderExportControls() {
         <input type="checkbox" value="${record.id}" ${state.selectedRecordIds.includes(record.id) ? "checked" : ""} />
         <span>
           <strong>${escapeHtml(record.patient || "Unnamed patient")}</strong>
-          <small>${escapeHtml(record.doctor || "No doctor")} · ${escapeHtml(record.prosthetic || "No prosthetic")}</small>
+          <small>${escapeHtml(record.doctor || "No doctor")} - ${escapeHtml(record.technician || "No technician")} - ${escapeHtml(record.prosthetic || "No prosthetic")}</small>
         </span>
       </label>
     `).join("")
@@ -400,6 +416,14 @@ function renderDoctorOptions(selectedDoctor = elements.doctorInput.value) {
   if (state.doctors.includes(selectedDoctor)) elements.doctorInput.value = selectedDoctor;
 }
 
+function renderTechnicianOptions(selectedTechnician = elements.technicianInput.value) {
+  const options = state.technicians.length
+    ? state.technicians.map((technician) => `<option value="${escapeHtml(technician)}">${escapeHtml(technician)}</option>`).join("")
+    : `<option value="">Add a technician first</option>`;
+  elements.technicianInput.innerHTML = options;
+  if (state.technicians.includes(selectedTechnician)) elements.technicianInput.value = selectedTechnician;
+}
+
 function renderThemeChoices() {
   $$(".theme-choice").forEach((button) => button.classList.toggle("active", button.dataset.theme === state.theme));
 }
@@ -407,6 +431,7 @@ function renderThemeChoices() {
 function renderAll() {
   renderUser();
   renderDoctorOptions();
+  renderTechnicianOptions();
   renderRecords();
   renderExportControls();
   renderThemeChoices();
@@ -433,10 +458,18 @@ function showRecordForm(record = null) {
     return;
   }
 
+  if (!state.technicians.length && !record) {
+    elements.newTechnicianInput.focus();
+    alert("Add a technician first, then create a patient record.");
+    return;
+  }
+
   elements.recordForm.hidden = false;
   elements.recordId.value = record?.id || "";
   if (record?.doctor && !state.doctors.includes(record.doctor)) state.doctors = normalizeDoctors([...state.doctors, record.doctor]);
+  if (record?.technician && !state.technicians.includes(record.technician)) state.technicians = normalizeNames([...state.technicians, record.technician]);
   renderDoctorOptions(record?.doctor || state.doctors[0] || "");
+  renderTechnicianOptions(record?.technician || state.technicians[0] || "");
   elements.patientInput.value = record?.patient || "";
   elements.prostheticInput.value = record?.prosthetic || "";
   elements.receivedInput.value = record?.received || "";
@@ -455,9 +488,16 @@ function hideRecordForm() {
 async function saveRecord(event) {
   event.preventDefault();
   const doctor = elements.doctorInput.value.trim();
+  const technician = elements.technicianInput.value.trim();
   if (!doctor) {
     alert("Please add or select a doctor before saving this record.");
     elements.newDoctorInput.focus();
+    return;
+  }
+
+  if (!technician) {
+    alert("Please add or select a technician before saving this record.");
+    elements.newTechnicianInput.focus();
     return;
   }
 
@@ -465,6 +505,7 @@ async function saveRecord(event) {
   const record = {
     id,
     doctor,
+    technician,
     patient: elements.patientInput.value.trim(),
     prosthetic: elements.prostheticInput.value.trim(),
     received: elements.receivedInput.value,
@@ -474,6 +515,7 @@ async function saveRecord(event) {
   };
 
   state.doctors = normalizeDoctors([...state.doctors, record.doctor]);
+  state.technicians = normalizeNames([...state.technicians, record.technician]);
   const existingIndex = state.records.findIndex((item) => item.id === id);
   if (existingIndex >= 0) {
     state.records[existingIndex] = record;
@@ -504,6 +546,19 @@ async function addDoctor() {
   state.doctors = normalizeDoctors([...state.doctors, doctor]);
   elements.newDoctorInput.value = "";
   renderDoctorOptions(doctor);
+  await saveRecords();
+}
+
+async function addTechnician() {
+  const technician = elements.newTechnicianInput.value.trim();
+  if (!technician) {
+    elements.newTechnicianInput.focus();
+    return;
+  }
+
+  state.technicians = normalizeNames([...state.technicians, technician]);
+  elements.newTechnicianInput.value = "";
+  renderTechnicianOptions(technician);
   await saveRecords();
 }
 
@@ -587,7 +642,7 @@ async function downloadPdf() {
     pdf.setTextColor(93, 104, 126);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
-    pdf.text(`${record.doctor || "No doctor"} - ${record.prosthetic || "No prosthetic"}`, margin + 16, y + 40);
+    pdf.text(`${record.doctor || "No doctor"} - ${record.technician || "No technician"} - ${record.prosthetic || "No prosthetic"}`, margin + 16, y + 40);
 
     y += 62;
 
@@ -675,6 +730,13 @@ elements.newDoctorInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
     addDoctor();
+  }
+});
+elements.addTechnicianButton.addEventListener("click", addTechnician);
+elements.newTechnicianInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addTechnician();
   }
 });
 elements.cancelRecordButton.addEventListener("click", hideRecordForm);
