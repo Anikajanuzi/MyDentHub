@@ -1,5 +1,6 @@
 const firebaseConfig = window.mydenthubFirebaseConfig || {};
 const storagePrefix = "mydenthub";
+const passwordIterations = 210000;
 const $ = (selector) => document.querySelector(selector);
 
 const text = {
@@ -108,6 +109,52 @@ async function hashPassword(email, password) {
   return `fallback-${hash}`;
 }
 
+function bytesToHex(bytes) {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToBytes(hex) {
+  return new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+}
+
+async function createPasswordRecord(email, password) {
+  if (!window.crypto?.subtle) {
+    return { passwordHash: await hashPassword(email, password), passwordVersion: "legacy" };
+  }
+
+  const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const derivedBits = await crypto.subtle.deriveBits({
+    name: "PBKDF2",
+    salt: new TextEncoder().encode(`${email.trim().toLowerCase()}:${bytesToHex(saltBytes)}`),
+    iterations: passwordIterations,
+    hash: "SHA-256",
+  }, keyMaterial, 256);
+
+  return {
+    passwordHash: bytesToHex(new Uint8Array(derivedBits)),
+    passwordSalt: bytesToHex(saltBytes),
+    passwordIterations,
+    passwordVersion: "pbkdf2-sha256",
+  };
+}
+
+async function verifyPasswordRecord(email, password, account) {
+  if (account?.passwordVersion !== "pbkdf2-sha256" || !account.passwordSalt || !window.crypto?.subtle) {
+    return account?.passwordHash === await hashPassword(email, password);
+  }
+
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const derivedBits = await crypto.subtle.deriveBits({
+    name: "PBKDF2",
+    salt: new TextEncoder().encode(`${email.trim().toLowerCase()}:${account.passwordSalt}`),
+    iterations: account.passwordIterations || passwordIterations,
+    hash: "SHA-256",
+  }, keyMaterial, 256);
+
+  return account.passwordHash === bytesToHex(new Uint8Array(derivedBits));
+}
+
 function accountKey(email) {
   return `${storagePrefix}:account:${email.trim().toLowerCase()}`;
 }
@@ -121,7 +168,8 @@ function rememberEmail(email) {
 }
 
 function enterDashboard(user) {
-  localStorage.setItem(`${storagePrefix}:session`, JSON.stringify(user));
+  sessionStorage.setItem(`${storagePrefix}:session`, JSON.stringify(user));
+  localStorage.removeItem(`${storagePrefix}:session`);
   localStorage.setItem(`${storagePrefix}:lastEmail`, user.email);
   window.location.href = "dashboard.html";
 }
@@ -183,10 +231,17 @@ async function handleLogin(event) {
       return;
     }
 
-    const passwordHash = await hashPassword(email, password);
-    if (storedAccount.passwordHash !== passwordHash) {
+    if (!await verifyPasswordRecord(email, password, storedAccount)) {
       elements.firebaseNotice.textContent = text.passwordMismatch;
       return;
+    }
+
+    if (storedAccount.passwordVersion !== "pbkdf2-sha256") {
+      localStorage.setItem(accountKey(email), JSON.stringify({
+        ...storedAccount,
+        ...await createPasswordRecord(email, password),
+        upgradedAt: new Date().toISOString(),
+      }));
     }
 
     rememberEmail(email);
@@ -258,10 +313,9 @@ async function handleCreateAccount(event) {
       return;
     }
 
-    const passwordHash = await hashPassword(email, password);
     localStorage.setItem(accountKey(email), JSON.stringify({
       email,
-      passwordHash,
+      ...await createPasswordRecord(email, password),
       createdAt: new Date().toISOString(),
     }));
     enterDashboard({ id: `local:${email}`, name: email.split("@")[0], email, authType: "local" });
@@ -276,7 +330,7 @@ elements.createPasswordInput.addEventListener("input", updateCreateStrength);
 elements.forgotPasswordButton.addEventListener("click", handleForgotPassword);
 elements.googleLoginButton.addEventListener("click", signInWithGoogle);
 
-if (localStorage.getItem(`${storagePrefix}:session`)) {
+if (sessionStorage.getItem(`${storagePrefix}:session`) || localStorage.getItem(`${storagePrefix}:session`)) {
   window.location.href = "dashboard.html";
 }
 

@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInWithEmail() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function ownsEmailDocument(userEmail) {
+      return signedInWithEmail() && request.auth.token.email.lower() == userEmail;
+    }
+
+    match /users/{userEmail} {
+      allow read, update, delete: if ownsEmailDocument(userEmail);
+      allow create: if ownsEmailDocument(userEmail)
+        && request.resource.data.email == request.auth.token.email.lower();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

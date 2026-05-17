@@ -1,6 +1,7 @@
 const storagePrefix = "mydenthub";
 const logoPath = "mydenthub-logo.png";
 const firebaseConfig = window.mydenthubFirebaseConfig || {};
+const passwordIterations = 210000;
 
 const fields = [
   { key: "doctor", label: "Doctor" },
@@ -138,6 +139,26 @@ async function hashPassword(email, password) {
   return `fallback-${hash}`;
 }
 
+function bytesToHex(bytes) {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifyPasswordRecord(email, password, account) {
+  if (account?.passwordVersion !== "pbkdf2-sha256" || !account.passwordSalt || !window.crypto?.subtle) {
+    return account?.passwordHash === await hashPassword(email, password);
+  }
+
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const derivedBits = await crypto.subtle.deriveBits({
+    name: "PBKDF2",
+    salt: new TextEncoder().encode(`${email.trim().toLowerCase()}:${account.passwordSalt}`),
+    iterations: account.passwordIterations || passwordIterations,
+    hash: "SHA-256",
+  }, keyMaterial, 256);
+
+  return account.passwordHash === bytesToHex(new Uint8Array(derivedBits));
+}
+
 async function loadUserData() {
   const cloud = await getCloudStore();
   if (cloud) {
@@ -229,6 +250,7 @@ function clearLocalUserData(userId) {
 
 function clearSessionAndRedirect() {
   const email = userEmailKey();
+  sessionStorage.removeItem(`${storagePrefix}:session`);
   localStorage.removeItem(`${storagePrefix}:session`);
   if (localStorage.getItem(`${storagePrefix}:lastEmail`) === email) {
     localStorage.removeItem(`${storagePrefix}:lastEmail`);
@@ -249,9 +271,8 @@ async function deleteCloudUserData() {
 async function deleteLocalAccount(password) {
   const email = userEmailKey();
   const storedAccount = JSON.parse(localStorage.getItem(accountKey(email)) || "null");
-  const passwordHash = await hashPassword(email, password);
 
-  if (!storedAccount || storedAccount.passwordHash !== passwordHash) {
+  if (!storedAccount || !await verifyPasswordRecord(email, password, storedAccount)) {
     throw new Error("That password does not match this account.");
   }
 
@@ -328,8 +349,47 @@ async function logout() {
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     await signOut(getAuth(app));
   }
+  sessionStorage.removeItem(`${storagePrefix}:session`);
   localStorage.removeItem(`${storagePrefix}:session`);
   window.location.href = "index.html";
+}
+
+function readSession() {
+  const session = sessionStorage.getItem(`${storagePrefix}:session`) || localStorage.getItem(`${storagePrefix}:session`);
+  if (session && localStorage.getItem(`${storagePrefix}:session`)) {
+    sessionStorage.setItem(`${storagePrefix}:session`, session);
+    localStorage.removeItem(`${storagePrefix}:session`);
+  }
+  return session;
+}
+
+async function waitForFirebaseUser(firebase) {
+  return new Promise((resolve) => {
+    const unsubscribe = firebase.onAuthStateChanged(firebase.auth, (user) => {
+      unsubscribe();
+      resolve(user);
+    });
+  });
+}
+
+async function validateSession() {
+  if (!hasFirebaseConfig() || !["firebase", "google"].includes(state.user?.authType)) return;
+
+  const firebase = await getFirebaseAuth();
+  const currentUser = await waitForFirebaseUser(firebase);
+  const sessionEmail = userEmailKey();
+
+  if (!currentUser?.email || currentUser.email.trim().toLowerCase() !== sessionEmail) {
+    clearSessionAndRedirect();
+    throw new Error("Your session expired. Please log in again.");
+  }
+
+  state.user = {
+    ...state.user,
+    id: currentUser.uid,
+    email: currentUser.email.trim().toLowerCase(),
+    name: currentUser.displayName || state.user.name || currentUser.email.split("@")[0],
+  };
 }
 
 function renderUser(updateProfileInputs = true) {
@@ -778,12 +838,12 @@ $$(".theme-choice").forEach((button) => {
   });
 });
 
-const existingSession = localStorage.getItem(`${storagePrefix}:session`);
+const existingSession = readSession();
 if (!existingSession) {
   window.location.href = "index.html";
 } else {
   state.user = JSON.parse(existingSession);
-  loadUserData().then(() => {
+  validateSession().then(loadUserData).then(() => {
     applyTheme();
     renderAll();
   }).catch((error) => {

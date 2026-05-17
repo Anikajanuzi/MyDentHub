@@ -15,6 +15,8 @@ A private, browser-based dental work organizer with:
 - Selective PDF export by doctor, record, and field.
 - Profile settings and saved theme choices, including Light, Aqua, Lavender, Midnight, and Dark.
 - MyDentHub logo branding in the app and exported PDFs.
+- Basic browser hardening with a Content Security Policy and referrer policy.
+- Firestore security rules for email-owned user documents.
 
 ## Open the App
 
@@ -33,6 +35,7 @@ Google accounts do not let third-party websites set a user's real Google passwor
 5. Paste it into `firebase-config.js`.
 6. In Firebase Authentication, enable Google and Email/Password providers.
 7. In Firestore Database, create a database for cross-device saved data.
+8. Publish `firestore.rules` in Firebase so each signed-in account can only read and write its own saved data.
 
 ```js
 window.mydenthubFirebaseConfig = {
@@ -45,4 +48,8 @@ window.mydenthubFirebaseConfig = {
 
 ## Storage Note
 
-Without Firebase, records are stored in the browser's `localStorage` under each signed-in user, so they stay on the same device. Local passwords are not stored as plain text; the app stores a password hash for matching future logins. With Firebase configured, records, doctors, profile, and theme save to Firestore so the same verified account can access them from another device.
+Without Firebase, records are stored in the browser's `localStorage` under each signed-in user, so they stay on the same device. Local passwords are not stored as plain text; new local accounts use a salted PBKDF2 password hash, and older local accounts are upgraded after a successful login. With Firebase configured, records, doctors, technicians, profile, and theme save to Firestore so the same verified account can access them from another device.
+
+## Security Note
+
+For real account security, deploy the app over HTTPS, configure Firebase Authentication, and publish the included `firestore.rules`. Local-only accounts are useful for one-device personal use, but browser storage can be cleared or inspected by someone with access to that device.
