@@ -1,0 +1,4 @@
+window.mydenthubSupabaseConfig = {
+  url: "",
+  anonKey: "",
+};

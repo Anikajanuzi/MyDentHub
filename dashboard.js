@@ -1,6 +1,7 @@
 const storagePrefix = "mydenthub";
 const logoPath = "mydenthub-logo.png";
 const firebaseConfig = window.mydenthubFirebaseConfig || {};
+const supabaseConfig = window.mydenthubSupabaseConfig || {};
 const passwordIterations = 210000;
 
 const fields = [
@@ -100,7 +101,20 @@ function hasFirebaseConfig() {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
 }
 
+function hasSupabaseConfig() {
+  return Boolean(supabaseConfig.url && supabaseConfig.anonKey && window.supabase?.createClient);
+}
+
+function getSupabaseClient() {
+  if (!hasSupabaseConfig()) return null;
+  if (!window.mydenthubSupabaseClient) {
+    window.mydenthubSupabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
+  }
+  return window.mydenthubSupabaseClient;
+}
+
 async function getCloudStore() {
+  if (hasSupabaseConfig() && state.user.authType === "supabase") return null;
   if (!hasFirebaseConfig() || !["firebase", "google"].includes(state.user.authType)) return null;
   const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
   const firestoreModule = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js");
@@ -160,6 +174,59 @@ async function verifyPasswordRecord(email, password, account) {
 }
 
 async function loadUserData() {
+  const supabaseClient = getSupabaseClient();
+  if (supabaseClient && state.user.authType === "supabase") {
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !authData.user) throw authError || new Error("Please log in again.");
+
+    const { data, error } = await supabaseClient
+      .from("user_data")
+      .select("records, doctors, technicians, profile, theme")
+      .eq("user_id", authData.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!data) {
+      const localUserId = `local:${userEmailKey()}`;
+      const localRecords = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "records")) || "[]");
+      const localDoctors = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "doctors")) || "[]");
+      const localTechnicians = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "technicians")) || "[]");
+      const localProfile = JSON.parse(localStorage.getItem(storageKeyForUser(localUserId, "profile")) || "{}");
+      const localTheme = localStorage.getItem(storageKeyForUser(localUserId, "theme")) || "aqua";
+
+      const initialData = {
+        user_id: authData.user.id,
+        email: userEmailKey(),
+        records: localRecords,
+        doctors: localDoctors,
+        technicians: localTechnicians,
+        profile: localProfile,
+        theme: localTheme,
+        updated_at: new Date().toISOString(),
+      };
+      const { error: insertError } = await supabaseClient.from("user_data").insert(initialData);
+      if (insertError) throw insertError;
+      state.records = initialData.records;
+      state.doctors = initialData.doctors;
+      state.technicians = initialData.technicians;
+      state.profile = initialData.profile;
+      state.theme = initialData.theme;
+    } else {
+      state.records = data.records || [];
+      state.doctors = data.doctors || [];
+      state.technicians = data.technicians || [];
+      state.profile = data.profile || {};
+      state.theme = data.theme || "aqua";
+    }
+
+    state.doctors = normalizeDoctors([...state.doctors, ...state.records.map((record) => record.doctor)]);
+    state.technicians = normalizeNames([...state.technicians, ...state.records.map((record) => record.technician)]);
+    state.selectedRecordIds = state.records.map((record) => record.id);
+    state.selectedFields = fields.map((field) => field.key);
+    return;
+  }
+
   const cloud = await getCloudStore();
   if (cloud) {
     const docRef = cloud.doc(cloud.db, "users", userDocumentId());
@@ -219,6 +286,22 @@ async function loadUserData() {
 }
 
 async function saveCloudData(partial) {
+  const supabaseClient = getSupabaseClient();
+  if (supabaseClient && state.user.authType === "supabase") {
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !authData.user) throw authError || new Error("Please log in again.");
+
+    const payload = {
+      user_id: authData.user.id,
+      email: userEmailKey(),
+      updated_at: new Date().toISOString(),
+      ...partial,
+    };
+    const { error } = await supabaseClient.from("user_data").upsert(payload, { onConflict: "user_id" });
+    if (error) throw error;
+    return true;
+  }
+
   const cloud = await getCloudStore();
   if (!cloud) return false;
   await cloud.setDoc(cloud.doc(cloud.db, "users", userDocumentId()), {
@@ -259,6 +342,15 @@ function clearSessionAndRedirect() {
 }
 
 async function deleteCloudUserData() {
+  const supabaseClient = getSupabaseClient();
+  if (supabaseClient && state.user.authType === "supabase") {
+    const { data: authData, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !authData.user) throw authError || new Error("Please log in again.");
+    const { error } = await supabaseClient.from("user_data").delete().eq("user_id", authData.user.id);
+    if (error) throw error;
+    return;
+  }
+
   const cloud = await getCloudStore();
   if (!cloud) return;
 
@@ -292,6 +384,19 @@ async function deleteFirebaseEmailAccount(password) {
   await firebase.deleteUser(credential.user);
 }
 
+async function deleteSupabaseAccountData(password) {
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) throw new Error("Supabase is not configured for this account.");
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email: userEmailKey(), password });
+  if (error) throw new Error("That password does not match this account.");
+
+  await deleteCloudUserData();
+  clearLocalUserData(state.user.id);
+  clearLocalUserData(`local:${userEmailKey()}`);
+  await supabaseClient.auth.signOut();
+}
+
 async function deleteAccount(event) {
   event.preventDefault();
   const password = elements.deletePasswordInput.value;
@@ -320,7 +425,9 @@ async function deleteAccount(event) {
   elements.deleteAccountButton.textContent = "Deleting...";
 
   try {
-    if (state.user.authType === "firebase") {
+    if (state.user.authType === "supabase") {
+      await deleteSupabaseAccountData(password);
+    } else if (state.user.authType === "firebase") {
       await deleteFirebaseEmailAccount(password);
     } else {
       await deleteLocalAccount(password);
@@ -343,6 +450,9 @@ function normalizeNames(names) {
 }
 
 async function logout() {
+  if (state.user?.authType === "supabase") {
+    await getSupabaseClient()?.auth.signOut();
+  }
   if (hasFirebaseConfig() && ["firebase", "google"].includes(state.user?.authType)) {
     const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
     const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
@@ -373,6 +483,28 @@ async function waitForFirebaseUser(firebase) {
 }
 
 async function validateSession() {
+  if (state.user?.authType === "supabase") {
+    const supabaseClient = getSupabaseClient();
+    if (!supabaseClient) {
+      clearSessionAndRedirect();
+      throw new Error("Supabase is not configured.");
+    }
+
+    const { data, error } = await supabaseClient.auth.getUser();
+    if (error || !data.user || data.user.email.trim().toLowerCase() !== userEmailKey()) {
+      clearSessionAndRedirect();
+      throw error || new Error("Your session expired. Please log in again.");
+    }
+
+    state.user = {
+      ...state.user,
+      id: data.user.id,
+      email: data.user.email.trim().toLowerCase(),
+      name: data.user.user_metadata?.display_name || state.user.name || data.user.email.split("@")[0],
+    };
+    return;
+  }
+
   if (!hasFirebaseConfig() || !["firebase", "google"].includes(state.user?.authType)) return;
 
   const firebase = await getFirebaseAuth();

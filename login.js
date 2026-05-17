@@ -1,10 +1,12 @@
 const firebaseConfig = window.mydenthubFirebaseConfig || {};
+const supabaseConfig = window.mydenthubSupabaseConfig || {};
 const storagePrefix = "mydenthub";
 const passwordIterations = 210000;
 const $ = (selector) => document.querySelector(selector);
 
 const text = {
   firebaseLocal: "Firebase is not configured, so email accounts work only on this device for now.",
+  supabaseLocal: "Cloud sync is not configured, so email accounts work only on this device for now.",
   firebaseGoogleSetup: "Add your Firebase web config in firebase-config.js to enable real Google sign-in.",
   accountCreated: "Account created. You are signed in. Check your email later to verify the account.",
   localAccountCreated: "Account created. You can now log in with this email and password.",
@@ -40,6 +42,18 @@ const elements = {
 
 function hasFirebaseConfig() {
   return Boolean(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
+}
+
+function hasSupabaseConfig() {
+  return Boolean(supabaseConfig.url && supabaseConfig.anonKey && window.supabase?.createClient);
+}
+
+function getSupabaseClient() {
+  if (!hasSupabaseConfig()) return null;
+  if (!window.mydenthubSupabaseClient) {
+    window.mydenthubSupabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
+  }
+  return window.mydenthubSupabaseClient;
 }
 
 async function getFirebaseAuth() {
@@ -202,6 +216,27 @@ async function handleLogin(event) {
   showLoginEmailHint();
 
   try {
+    const supabaseClient = getSupabaseClient();
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (["invalid_credentials", "email_not_confirmed"].includes(error.code)) {
+          elements.firebaseNotice.textContent = text.passwordMismatch;
+          return;
+        }
+        throw error;
+      }
+
+      rememberEmail(email);
+      enterDashboard({
+        id: data.user.id,
+        name: data.user.user_metadata?.display_name || email.split("@")[0],
+        email,
+        authType: "supabase",
+      });
+      return;
+    }
+
     const firebase = await getFirebaseAuth();
     if (firebase) {
       const methods = await firebase.fetchSignInMethodsForEmail(firebase.auth, email);
@@ -263,6 +298,16 @@ async function handleForgotPassword() {
 
   try {
     const firebase = await getFirebaseAuth();
+    const supabaseClient = getSupabaseClient();
+    if (supabaseClient) {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}${window.location.pathname}`,
+      });
+      if (error) throw error;
+      elements.firebaseNotice.textContent = text.resetEmailSent;
+      return;
+    }
+
     if (!firebase) {
       elements.firebaseNotice.textContent = text.resetNeedsFirebase;
       return;
@@ -291,6 +336,32 @@ async function handleCreateAccount(event) {
     if (scorePassword(password) < 5) {
       elements.firebaseNotice.textContent = text.passwordWeak;
       updateCreateStrength();
+      return;
+    }
+
+    const supabaseClient = getSupabaseClient();
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { display_name: email.split("@")[0] },
+        },
+      });
+      if (error) throw error;
+
+      if (!data.session) {
+        elements.firebaseNotice.textContent = "Account created. Check your email to confirm it, then log in.";
+        return;
+      }
+
+      rememberEmail(email);
+      enterDashboard({
+        id: data.user.id,
+        name: email.split("@")[0],
+        email,
+        authType: "supabase",
+      });
       return;
     }
 
@@ -340,7 +411,7 @@ if (rememberedEmail) {
   elements.createEmailInput.value = rememberedEmail;
 }
 
-if (!hasFirebaseConfig()) {
-  elements.firebaseNotice.textContent = text.firebaseLocal;
+if (!hasSupabaseConfig() && !hasFirebaseConfig()) {
+  elements.firebaseNotice.textContent = text.supabaseLocal;
 }
 updateCreateStrength();
